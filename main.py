@@ -131,7 +131,7 @@ async def donate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     start_message = (
-        "Welcome to @NSpoofer\n"
+        "Welcome to @NiggaSpoofer\n"
         "Support: @un0h4na or @AlyaHidesHerFeelingsInTypeScript\n\n"
         "This project is funded by donations!\n"
         "If you want me to eat and keep the SMTPs fresh, feel free to do /donate\n\n"
@@ -162,8 +162,8 @@ async def back_to_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_text = (
-        "Welcome to *N Spoofer*\\! 🎭\n\n"
-        "Please check @nspoofer for frequently asked questions\\. For custom spoofings, follow this protocol:\n\n"
+        "Welcome to *Nigga Spoofer*\\! 🎭\n\n"
+        "Please check @niggaspoofer for frequently asked questions\\. For custom spoofings, follow this protocol:\n\n"
         "1\\. *Directory Spoofing*:\n"
         "   Let's say you want to spoof `playboicarti\\.com`\\. For your email, you'll want it to end in one of the directories\\.\n"
         "   Example: Instead of `@playboicarti\\.com`, use `@playboicarti\\.com/tour`\\.\n\n"
