@@ -161,13 +161,18 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     data = query.data
 
     if data == "Spoofer":
-        await custom_mail(update, context)
+        await start_custom_mail_flow(update, context)
     elif data == "/donate":
         await donate(update, context)
     elif data == "/id":
         await get_user_id(update, context)
     elif data == "/help":
         await help_command(update, context)
+
+async def start_custom_mail_flow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Starts the custom email flow from a callback query."""
+    await update.callback_query.message.reply_text("Enter the victim email address:")
+    return CUSTOM_VICTIM_EMAIL
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -227,7 +232,7 @@ async def get_recipients(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             [InlineKeyboardButton("help@coinbase", callback_data="help@coinbase")],
             [InlineKeyboardButton("no-reply@coinbase.com/help", callback_data="no-reply@coinbase.com/help")],
             [InlineKeyboardButton("help@coínbase.com", callback_data="help@coínbase.com")]
-        ]          
+        ]
     elif context.user_data.get("conversation") == "employee_google":
         keyboard = [
             [InlineKeyboardButton("help@google", callback_data="help@google")],
@@ -253,9 +258,11 @@ async def custom_mail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     """Initiates the custom email flow."""
     if update.message:
         await update.message.reply_text("Enter the victim email address:")
-    elif update.callback_query:
-        await update.callback_query.message.reply_text("Enter the victim email address:")
-    return CUSTOM_VICTIM_EMAIL
+        return CUSTOM_VICTIM_EMAIL
+    else:
+        # Handle the case where update.message is None
+        await update.effective_chat.send_message("This command can only be used in a message context.")
+        return ConversationHandler.END
 
 async def get_custom_victim_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Stores the victim email and asks for the email subject."""
@@ -286,17 +293,13 @@ async def get_custom_html(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if update.message.document:
         file = await update.message.document.get_file()
         html_content = await file.download_as_bytearray()
-
-
         context.user_data["html_content"] = html_content.decode("utf-8")
-
 
         victim_email = context.user_data["victim_email"]
         subject = context.user_data["subject"]
         sender_name = context.user_data["sender_name"]
         display_email = context.user_data["display_email"]
         html_body = context.user_data["html_content"]
-
 
         msg = MIMEMultipart("related")
         msg["Subject"] = subject
@@ -316,7 +319,6 @@ async def get_custom_html(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await update.message.reply_text("Custom email sent successfully!")
         except Exception as e:
             await update.message.reply_text(f"Failed to send email: {str(e)}")
-
 
         context.user_data.clear()
         return ConversationHandler.END
@@ -393,6 +395,19 @@ def send_email_through_smtp(display_name, smtp_username, subject, msg, recipient
         logging.error(f"Failed to send email: {str(e)}")
         raise e
 
+custom_mail_handler = ConversationHandler(
+    entry_points=[CallbackQueryHandler(handle_callback_query, pattern="^Spoofer$")],
+    states={
+        CUSTOM_VICTIM_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_victim_email)],
+        CUSTOM_SUBJECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_subject)],
+        CUSTOM_SENDER_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_sender_name)],
+        CUSTOM_DISPLAY_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_display_email)],
+        CUSTOM_HTML: [MessageHandler(filters.Document.ALL & ~filters.COMMAND, get_custom_html)],
+    },
+    fallbacks=[CommandHandler("cancel", cancel)],
+
+)
+
 def main():
     load_email_counts()
 
@@ -404,18 +419,6 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("id", get_user_id))
 
-
-    custom_mail_handler = ConversationHandler(
-    entry_points=[CommandHandler("Spoofer", custom_mail)],
-    states={
-        CUSTOM_VICTIM_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_victim_email)],
-        CUSTOM_SUBJECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_subject)],
-        CUSTOM_SENDER_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_sender_name)],
-        CUSTOM_DISPLAY_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_display_email)],
-        CUSTOM_HTML: [MessageHandler(filters.Document.ALL & ~filters.COMMAND, get_custom_html)],
-    },
-    fallbacks=[CommandHandler("cancel", cancel)],
-)
 
 
     application.add_handler(custom_mail_handler)
