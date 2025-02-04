@@ -162,8 +162,8 @@ async def back_to_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_text = (
-        "Welcome to *Nigga Spoofer*\\! 🎭\n\n"
-        "Please check @niggaspoofer for frequently asked questions\\. For custom spoofings, follow this protocol:\n\n"
+        "Welcome to *N Spoofer*\\! 🎭\n\n"
+        "Please check @nspoofer for frequently asked questions\\. For custom spoofings, follow this protocol:\n\n"
         "1\\. *Directory Spoofing*:\n"
         "   Let's say you want to spoof `playboicarti\\.com`\\. For your email, you'll want it to end in one of the directories\\.\n"
         "   Example: Instead of `@playboicarti\\.com`, use `@playboicarti\\.com/tour`\\.\n\n"
@@ -198,10 +198,8 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def custom_mail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Initiates the custom email flow."""
-    if update.message:
-        await update.message.reply_text("Start by entering the email address of the target! (eg. niggaspoofer@juggalot.com) Cancel this flow using /cancel:")
-    elif update.callback_query:
-        await update.callback_query.message.reply_text("Start by entering the email address of the target! (eg. niggaspoofer@juggalot.com) Cancel this flow using /cancel:")
+    await update.message.reply_text("Start by entering the email address of the target! (eg. niggaspoofer@juggalot.com) Cancel this flow using /cancel:")
+
     return CUSTOM_VICTIM_EMAIL
 
 async def get_custom_victim_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -341,8 +339,25 @@ def send_email_through_smtp(display_name, smtp_username, subject, msg, recipient
         raise e
 
 
+
+
+async def account_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id
+    account_message = (
+        f"Account Information:\n\n"
+        f"User ID: {user_id}\n"
+        f"Mails sent: {user_email_counts.get(str(user_id), 0)}"
+    )
+    await update.message.reply_text(account_message)
+
+
+
+
+
+
+
 custom_mail_handler = ConversationHandler(
-    entry_points=[CommandHandler("Spoofer", custom_mail)],
+    entry_points=[MessageHandler(filters.Regex(r'^Spoofer$'), custom_mail)],  # Changed to MessageHandler
     states={
         CUSTOM_VICTIM_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_victim_email)],
         CUSTOM_SUBJECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_subject)],
@@ -353,32 +368,23 @@ custom_mail_handler = ConversationHandler(
     fallbacks=[CommandHandler("cancel", cancel)],
 )
 
-async def account_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.effective_user.id
-    account_message = (
-        f"Account Information:\n\n"
-        f"User ID: {user_id}\n"
-        f"Mails sent: {user_email_counts.get(str(user_id), 0)}"
-    )
-    await update.message.reply_text(account_message)
+
 def main():
     load_email_counts()
 
-
-    TOKEN = "8161193786:AAEw62XKG_beqNdVGGDBH4eEji6KLFLBHNU"
+    TOKEN = "8157065921:AAGzZPW0q-2aSs4Pcg_E0qBGV2v3RkHVjEA"
     application = ApplicationBuilder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("donate", donate))
     application.add_handler(CommandHandler("id", get_user_id))
-    application.add_handler(custom_mail_handler)
+    application.add_handler(custom_mail_handler)  # Uncommented line
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^(Donate)$"), donate))
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^(Account)$"), account_info))
     application.add_handler(broadcast_handler)
-    application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^(Spoofer)$"), custom_mail))
+    # Removed the redundant MessageHandler for "Spoofer"
     application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^(Help)$"), help_command))
-    application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("cancel", cancel))
 
     application.run_polling()
