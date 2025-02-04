@@ -160,7 +160,7 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
     data = query.data
 
-    if data == "custom_mail":
+    if data == "Spoofer":
         await custom_mail(update, context)
     elif data == "/donate":
         await donate(update, context)
@@ -169,38 +169,11 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
     elif data == "/help":
         await help_command(update, context)
 
-async def misc_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    keyboard = [
-        [KeyboardButton("/id"), KeyboardButton("/help")],
-        [KeyboardButton("Back to Main Menu")]
-    ]
-
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text("Misc Menu:", reply_markup=reply_markup)
-
-
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text("Coinbase Menu:", reply_markup=reply_markup)
-
-async def other_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    keyboard = [
-        [KeyboardButton("/employee_google")],
-        [KeyboardButton("/employee_kraken")],
-        [KeyboardButton("/employee_trezor")],
-        [KeyboardButton("/custom_mail")],
-        [KeyboardButton("Back to Main Menu")]
-    ]
-
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text("Other Menu:", reply_markup=reply_markup)
-
-async def back_to_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await start(update, context)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_text = (
-        "Welcome to *Nigga Spoofer*\\! 🎭\n\n"
-        "Please check @niggaspoofer for frequently asked questions\\. For custom spoofings, follow this protocol:\n\n"
+        "Welcome to *N Spoofer*\\! 🎭\n\n"
+        "Please check @nspoofer for frequently asked questions\\. For custom spoofings, follow this protocol:\n\n"
         "1\\. *Directory Spoofing*:\n"
         "   Let's say you want to spoof `playboicarti\\.com`\\. For your email, you'll want it to end in one of the directories\\.\n"
         "   Example: Instead of `@playboicarti\\.com`, use `@playboicarti\\.com/tour`\\.\n\n"
