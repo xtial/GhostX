@@ -1,33 +1,53 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
-[project]
+[tool.poetry]
 name = "ghostx"
 version = "1.0.0"
 description = "Professional Email Management System"
-authors = [
-    {name = "Ghostx Team", email = "admin@ghost.sbs"}
-]
+authors = ["Ghostx Team <admin@ghost.sbs>"]
 readme = "README.md"
-requires-python = ">=3.8"
-license = {text = "MIT"}
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-]
+packages = [{include = "src"}]
+license = "MIT"
 
-[project.urls]
-Homepage = "https://github.com/GhostRelayX/spoofer"
-Repository = "https://github.com/GhostRelayX/spoofer.git"
-Issues = "https://github.com/GhostRelayX/spoofer/issues"
+[tool.poetry.dependencies]
+python = ">=3.8,<4.0"
+flask = "*"
+flask-login = "*"
+flask-sqlalchemy = "*"
+flask-wtf = "*"
+flask-session = "*"
+flask-limiter = "*"
+flask-migrate = "*"
+sqlalchemy = "*"
+werkzeug = "*"
+jinja2 = "*"
+python-dotenv = "*"
+waitress = "*"
+beautifulsoup4 = "*"
+gunicorn = "*"
+email-validator = "*"
+cryptography = "*"
+requests = "*"
+python-dateutil = "*"
+pytz = "*"
+bcrypt = "*"
+itsdangerous = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+black = "*"
+flake8 = "*"
+mypy = "*"
+coverage = "*"
+pytest-cov = "*"
+bandit = "*"
+safety = "*"
+isort = "*"
+
+[tool.poetry.scripts]
+ghostx = "setup:run_server"
 
 [tool.black]
 line-length = 127

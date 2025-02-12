@@ -352,18 +352,18 @@ async function loadTemplates() {
             }
         ];
         
-        templateGrid.innerHTML = '';
+            templateGrid.innerHTML = '';
         console.log(`Processing ${templates.length} templates...`);
-        
+            
         templates.forEach((template, index) => {
-            const templateCard = document.createElement('div');
-            templateCard.className = 'template-card';
+                const templateCard = document.createElement('div');
+                templateCard.className = 'template-card';
             templateCard.dataset.type = template.type;
             
             const senderInfoAttr = encodeURIComponent(JSON.stringify(template.sender));
             
-            templateCard.innerHTML = `
-                <div class="template-content">
+                templateCard.innerHTML = `
+                    <div class="template-content">
                     <div class="template-header">
                         <h3>${template.name}</h3>
                         <div class="template-badges">
@@ -392,8 +392,8 @@ async function loadTemplates() {
                             <i class="fas fa-share-alt"></i> Share
                         </button>
                     </div>
-                </div>
-            `;
+                    </div>
+                `;
             
             // Add event listeners
             const useButton = templateCard.querySelector('.use-template');
