@@ -59,15 +59,22 @@ jobs:
         poetry config virtualenvs.create true
         poetry config virtualenvs.in-project true
 
+    - name: Generate poetry.lock
+      run: |
+        if [ ! -f "poetry.lock" ]; then
+          poetry lock --no-update
+        fi
+
     - name: Check for Latest Package Versions
       run: |
+        pip install --upgrade pip
         pip install pip-check
         pip-check
         poetry show --outdated
 
     - name: Install dependencies
       run: |
-        poetry install --with dev --sync
+        poetry install --with dev --sync --no-root
 
     - name: Security check dependencies
       run: poetry run safety check
