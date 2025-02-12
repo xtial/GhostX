@@ -12,7 +12,7 @@ packages = [{include = "src"}]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4.0"
+python = ">=3.10,<4.0"
 flask = "*"
 flask-login = "*"
 flask-sqlalchemy = "*"
