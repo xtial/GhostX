@@ -1,85 +1,175 @@
-name: Python application
+name: Ghostx CI/CD
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.11"
+  POETRY_VERSION: "1.7.1"
+  # Flask Configuration
+  FLASK_ENV: "production"
+  FLASK_DEBUG: "0"
+  # Database Configuration
+  DATABASE_URL: "sqlite:///spoofer.db"
+  # Server Configuration
+  PORT: "80"
+  HOST: "0.0.0.0"
+  DOMAIN: "ghost.sbs"
+  DOMAIN_SCHEME: "http"
+  # Rate Limiting
+  MAX_EMAILS_PER_HOUR: "10"
+  MAX_EMAILS_PER_DAY: "50"
 
 permissions:
   contents: read
+  packages: write
+  issues: write
+  pull-requests: write
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
-    - uses: actions/checkout@v3
-    
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    
-    - name: Install dependencies
+        cache: 'pip'
+
+    - name: Install system dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install flake8 pytest coverage black mypy
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    
+        sudo apt-get update
+        sudo apt-get install -y build-essential libssl-dev libffi-dev python3-dev
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install -r requirements.txt
+        pip install flake8 pytest pytest-cov black mypy isort bandit safety
+
+    - name: Security check dependencies
+      run: |
+        safety check
+
+    - name: Check code formatting with Black
+      run: |
+        black . --check --diff
+
+    - name: Sort imports with isort
+      run: |
+        isort . --check-only --diff
+
     - name: Lint with flake8
       run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings
+        flake8 . --count --show-source --statistics
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    
-    - name: Format check with black
+
+    - name: Static type checking with mypy
       run: |
-        black . --check
-    
-    - name: Type check with mypy
+        mypy src/ --ignore-missing-imports
+
+    - name: Security check with bandit
       run: |
-        mypy src/
-    
-    - name: Run tests with pytest and coverage
+        bandit -r src/ -c pyproject.toml
+
+    - name: Run tests with pytest
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        WTF_CSRF_SECRET_KEY: ${{ secrets.WTF_CSRF_SECRET_KEY }}
       run: |
-        coverage run -m pytest
-        coverage report
-        coverage xml
-    
+        pytest tests/ --cov=src/ --cov-report=xml -v
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
-        fail_ci_if_error: true
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
 
-  deploy:
+  build:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-    - uses: actions/checkout@v3
-    
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
-        python-version: "3.11"
-    
-    - name: Install dependencies
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip
         pip install build twine
-    
+
     - name: Build package
-      run: python -m build
-    
-    - name: Deploy to GitHub Packages
+      run: |
+        python -m build
+
+    - name: Check distribution
+      run: |
+        twine check dist/*
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: dist/*
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload to GitHub Packages
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        python -m twine upload --repository-url https://maven.pkg.github.com/${{ github.repository }} dist/* 
+        python -m twine upload --repository-url https://maven.pkg.github.com/${{ github.repository }} dist/*
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: prod
+
+    steps:
+    - name: Deploy to production
+      env:
+        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      run: |
+        # Install SSH key
+        mkdir -p ~/.ssh
+        echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        
+        # Deploy using SSH
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $DEPLOY_USER@$DEPLOY_HOST << 'EOF'
+          cd $DEPLOY_PATH
+          git pull origin main
+          source venv/bin/activate
+          pip install -r requirements.txt
+          flask db upgrade
+          sudo systemctl restart ghostx
+        EOF 
