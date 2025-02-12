@@ -8,6 +8,7 @@ from ..models import db, User, EmailTemplate, Permission, PermissionType, UserRo
 from ..config import Config
 from ..utils.email import send_spoofed_email
 import logging
+import traceback
 
 logger = logging.getLogger(__name__)
 admin = Blueprint('admin', __name__, url_prefix='/admin')
@@ -23,6 +24,32 @@ def admin_required(f):
             return redirect(url_for('main.dashboard'))
         return f(*args, **kwargs)
     return decorated_function
+
+def handle_error(e: Exception, error_type: str) -> tuple:
+    """
+    Centralized error handler that logs full details but returns safe messages to users
+    """
+    # Log full error details for debugging
+    logger.error(f"Error in {error_type}: {str(e)}")
+    logger.error(f"Stack trace: {traceback.format_exc()}")
+    
+    # Return a generic message to the user
+    error_messages = {
+        'stats': 'Failed to retrieve statistics',
+        'users': 'Failed to retrieve user information',
+        'user_status': 'Failed to update user status',
+        'user_delete': 'Failed to delete user',
+        'settings': 'Failed to manage settings',
+        'templates': 'Failed to manage templates',
+        'email': 'Failed to process email operation',
+        'roles': 'Failed to manage roles',
+        'permissions': 'Failed to manage permissions'
+    }
+    
+    return jsonify({
+        'success': False,
+        'message': error_messages.get(error_type, 'An unexpected error occurred')
+    }), 500
 
 @admin.route('/')
 @login_required
@@ -96,11 +123,7 @@ def get_stats():
             }
         })
     except Exception as e:
-        logger.error(f"Error getting admin stats: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
+        return handle_error(e, 'stats')
 
 @admin.route('/users')
 @login_required
@@ -122,11 +145,7 @@ def get_users():
             } for user in users]
         })
     except Exception as e:
-        logger.error(f"Error getting users list: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
+        return handle_error(e, 'users')
 
 @admin.route('/user/toggle-status', methods=['POST'])
 @login_required
@@ -167,12 +186,8 @@ def toggle_user_status():
             'message': f'User {action} successfully'
         })
     except Exception as e:
-        logger.error(f"Error toggling user status: {str(e)}")
         db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
+        return handle_error(e, 'user_status')
 
 @admin.route('/user/delete', methods=['POST'])
 @login_required
@@ -212,12 +227,8 @@ def delete_user():
             'message': 'User deleted successfully'
         })
     except Exception as e:
-        logger.error(f"Error deleting user: {str(e)}")
         db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
+        return handle_error(e, 'user_delete')
 
 @admin.route('/settings')
 @login_required
@@ -230,11 +241,7 @@ def get_settings():
             'max_emails_per_day': Config.MAX_EMAILS_PER_DAY
         })
     except Exception as e:
-        logger.error(f"Error getting settings: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
+        return handle_error(e, 'settings')
 
 @admin.route('/settings/update', methods=['POST'])
 @login_required
@@ -280,11 +287,7 @@ def update_settings():
             'message': 'Settings updated successfully'
         })
     except Exception as e:
-        logger.error(f"Error updating settings: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
+        return handle_error(e, 'settings')
 
 @admin.route('/templates')
 @login_required
@@ -305,11 +308,7 @@ def get_templates():
             } for template in templates]
         })
     except Exception as e:
-        logger.error(f"Error getting email templates: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
+        return handle_error(e, 'templates')
 
 @admin.route('/templates/<int:template_id>')
 @login_required
@@ -336,11 +335,7 @@ def get_template(template_id):
             }
         })
     except Exception as e:
-        logger.error(f"Error getting email template: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
+        return handle_error(e, 'templates')
 
 @admin.route('/send-email', methods=['POST'])
 @login_required
@@ -382,11 +377,7 @@ def send_email():
             raise Exception('Failed to send email')
             
     except Exception as e:
-        logger.error(f"Error sending email: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
+        return handle_error(e, 'email')
 
 @admin.route('/api/roles', methods=['GET'])
 @login_required
@@ -434,8 +425,7 @@ def get_roles():
             'roles': roles
         })
     except Exception as e:
-        logger.error(f"Error getting roles: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return handle_error(e, 'roles')
 
 @admin.route('/api/permissions')
 @login_required
@@ -468,8 +458,7 @@ def get_permissions():
             'categories': categories
         })
     except Exception as e:
-        logger.error(f"Error getting permissions: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return handle_error(e, 'permissions')
 
 @admin.route('/api/user/role', methods=['POST'])
 @login_required
@@ -519,9 +508,7 @@ def update_user_role():
             }
         })
     except Exception as e:
-        logger.error(f"Error updating user role: {str(e)}")
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return handle_error(e, 'roles')
 
 @admin.route('/api/user/permission', methods=['POST'])
 @login_required
@@ -630,7 +617,7 @@ def update_role_permissions():
             'message': f'Updated permissions for {role} role'
         })
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return handle_error(e, 'roles')
 
 @admin.route('/api/role/<role>/permissions', methods=['GET'])
 @login_required
@@ -672,8 +659,7 @@ def get_role_permissions(role):
             'can_be_modified': role != UserRole.SUPER_ADMIN.value
         })
     except Exception as e:
-        logger.error(f"Error getting role permissions: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return handle_error(e, 'roles')
 
 @admin.route('/api/role/permission', methods=['POST'])
 @login_required
@@ -725,9 +711,7 @@ def update_role_permission():
             'updated_users': updated_count
         })
     except Exception as e:
-        logger.error(f"Error updating role permission: {str(e)}")
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return handle_error(e, 'roles')
 
 @admin.route('/api/admin/user/<int:user_id>/permissions', methods=['GET'])
 @login_required
@@ -759,8 +743,4 @@ def get_user_permissions(user_id):
         })
         
     except Exception as e:
-        logger.error(f"Error getting user permissions: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500 
+        return handle_error(e, 'permissions') 

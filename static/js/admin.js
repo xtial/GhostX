@@ -1197,39 +1197,142 @@ const errorHandler = {
 
 // Enhanced security features
 const security = {
+    // Use DOMPurify for HTML sanitization
+    sanitizeHTML: (input) => {
+        if (typeof input !== 'string') return '';
+        return DOMPurify.sanitize(input, {
+            ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li'],
+            ALLOWED_ATTR: ['href', 'target', 'rel'],
+            FORBID_TAGS: ['script', 'style', 'iframe', 'form', 'input', 'button'],
+            FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onmouseout', 'style'],
+            ALLOW_DATA_ATTR: false,
+            USE_PROFILES: { html: true },
+            SANITIZE_DOM: true,
+            KEEP_CONTENT: true,
+            RETURN_DOM_FRAGMENT: false,
+            RETURN_DOM: false,
+            FORCE_BODY: false,
+            SAFE_FOR_TEMPLATES: true
+        });
+    },
+
     validateInput: (input) => {
-        const dangerousPatterns = [
-            /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-            /javascript:/gi,
-            /onerror=/gi,
-            /onload=/gi,
-            /onclick=/gi
-        ];
+        if (typeof input !== 'string') return false;
         
+        // Comprehensive list of dangerous patterns
+        const dangerousPatterns = [
+            // Script tags with various formats
+            /<[^>]*script/gi,
+            /<[^>]*\\script/gi,
+            /script\s*:/gi,
+            /javascript\s*:/gi,
+            /vbscript\s*:/gi,
+            /livescript\s*:/gi,
+            /&#/gi,  // HTML entities
+            /data\s*:[^;]*base64/gi,
+            
+            // Event handlers
+            /\bon\w+\s*=/gi,
+            /\bfunction\s*\(/gi,
+            
+            // Data attributes that could contain scripts
+            /data-[^=]*=/gi,
+            
+            // Other dangerous patterns
+            /expression\s*\(/gi,
+            /url\s*\(/gi,
+            /eval\s*\(/gi,
+            /alert\s*\(/gi,
+            /document\s*\./gi,
+            /window\s*\./gi,
+            /\[\s*["'].*["']\s*\]/gi,  // Array access notation
+            /\(\s*["'].*["']\s*\)/gi   // Function calls with string arguments
+        ];
+
+        // Check for dangerous patterns
         return !dangerousPatterns.some(pattern => pattern.test(input));
     },
-    
-    sanitizeInput: (input) => {
-        return input.replace(/[<>]/g, '');
+
+    escapeHTML: (str) => {
+        if (typeof str !== 'string') return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     },
-    
-    validatePermissions: async () => {
+
+    // Validate URLs
+    validateURL: (url) => {
+        if (typeof url !== 'string') return false;
         try {
-            const response = await fetch('/api/admin/validate-permissions', fetchOptions('GET'));
-            const data = await response.json();
-            
-            if (!data.success) {
-                await notifications.show('Permission validation failed!', 'error');
-                return false;
-            }
-            
-            return true;
-        } catch (error) {
-            await errorHandler.handle(error, 'Permission Validation');
+            const parsedUrl = new URL(url);
+            return ['http:', 'https:'].includes(parsedUrl.protocol);
+        } catch {
             return false;
         }
-    }
+    },
+
+    // Sanitize file names
+    sanitizeFileName: (filename) => {
+        if (typeof filename !== 'string') return '';
+        return filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    },
+
+    // Validate JSON input
+    validateJSON: (input) => {
+        try {
+            if (typeof input === 'string') {
+                JSON.parse(input);
+            }
+            return true;
+        } catch {
+            return false;
+        }
+    },
+
+    // Rate limiting helper
+    rateLimiter: (() => {
+        const limits = new Map();
+        return {
+            check: (key, maxAttempts = 5, timeWindow = 60000) => {
+                const now = Date.now();
+                const attempts = limits.get(key) || [];
+                const recentAttempts = attempts.filter(time => now - time < timeWindow);
+                limits.set(key, recentAttempts);
+                if (recentAttempts.length >= maxAttempts) return false;
+                recentAttempts.push(now);
+                limits.set(key, recentAttempts);
+                return true;
+            }
+        };
+    })()
 };
+
+// Add DOMPurify configuration
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof DOMPurify !== 'undefined') {
+        DOMPurify.setConfig({
+            ADD_TAGS: ['meta', 'link'],
+            ADD_ATTR: ['target', 'rel'],
+            FORBID_CONTENTS: ['style', 'script', 'iframe', 'form', 'input'],
+            WHOLE_DOCUMENT: false,
+            FORCE_BODY: true,
+            RETURN_DOM_FRAGMENT: false,
+            RETURN_DOM: false,
+            SANITIZE_DOM: true
+        });
+        
+        // Add custom hooks
+        DOMPurify.addHook('beforeSanitizeElements', (node) => {
+            if (node.hasAttribute && node.hasAttribute('href')) {
+                const href = node.getAttribute('href');
+                if (!security.validateURL(href)) {
+                    node.removeAttribute('href');
+                }
+            }
+            return node;
+        });
+    }
+});
 
 // Enhanced user experience features
 const userExperience = {

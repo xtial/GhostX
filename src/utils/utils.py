@@ -1,5 +1,6 @@
 import re
 import html
+import bleach
 
 def is_password_strong(password: str) -> bool:
     """
@@ -29,18 +30,27 @@ def is_password_strong(password: str) -> bool:
 
 def sanitize_input(input_str: str) -> str:
     """
-    Sanitize user input by escaping HTML special characters and removing potentially dangerous content
+    Sanitize user input by using bleach library for robust HTML sanitization.
+    This provides better protection against XSS attacks compared to regex-based approaches.
     """
-    # Escape HTML special characters
-    sanitized = html.escape(input_str)
+    if not isinstance(input_str, str):
+        input_str = str(input_str)
+
+    # First, escape all HTML
+    escaped = html.escape(input_str)
     
-    # Remove any script tags and their contents
-    sanitized = re.sub(r'<script.*?>.*?</script>', '', sanitized, flags=re.IGNORECASE | re.DOTALL)
+    # Use bleach to strip all HTML tags and attributes
+    # This is more robust than regex-based approaches
+    cleaned = bleach.clean(
+        escaped,
+        tags=[],  # No allowed tags
+        attributes={},  # No allowed attributes
+        protocols=[],  # No allowed protocols
+        strip=True,  # Strip disallowed tags
+        strip_comments=True  # Strip comments
+    )
     
-    # Remove any other HTML tags
-    sanitized = re.sub(r'<.*?>', '', sanitized)
-    
-    return sanitized.strip()
+    return cleaned.strip()
 
 def validate_username(username: str) -> bool:
     """

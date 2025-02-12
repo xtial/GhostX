@@ -542,12 +542,24 @@
         };
         window.CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ext-language_tools.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/theme-monokai.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/mode-html.js"></script>
-    <script src="https://unpkg.com/@popperjs/core@2"></script>
-    <script src="https://unpkg.com/tippy.js@6"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js" 
+        integrity="sha512-GZ1RIgZaSc8rnco/8CXfRdCpDxRCphenIiZ2ztLy3XQfCbQUSCuk8IudvNHxkRA3oUg6q0qejgN/qqyG1duv5Q==" 
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ext-language_tools.js" 
+        integrity="sha512-LpC2mSsHYGXEdGVeqAqJzKVyJEkqq0TPQM4VeZdA4rC/KpkvzWkR0jJxmxyN0TkQQgpEPB3Z8Xvkf4h3JsQ+Bg==" 
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/theme-monokai.min.js" 
+        integrity="sha512-S4MQpX8uRK3+qfzqWV5tMBVHVBw2RFE/BdfWy2RWlrZmUBWVHWmVnmvXPVZEHh2JIKRsVrwkKZxAXAMMbBHZQ==" 
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/mode-html.js" 
+        integrity="sha512-WYwiohAHG/hE/8UwFbuAZ0m5FwjhYFYrxXvpzLEK+gJVzTGxFAjXRdcQlZ5jl5LZWK/unSGqVLzGmBKMR/i/w==" 
+        crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@popperjs/core@2.11.8/dist/umd/popper.min.js" 
+        integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" 
+        crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/tippy.js@6.3.7/dist/tippy.umd.min.js" 
+        integrity="sha384-uRK6QXCQf+wXpPX1DSQXAXYQk4LIC4Yx7Y1DqJJX7rRXvhKrlgU8mcCpU/uSR88p" 
+        crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='js/utils.js') }}" type="module"></script>
     <script src="{{ url_for('static', filename='js/dashboard.js') }}" type="module"></script>
 </body>
