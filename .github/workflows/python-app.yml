@@ -74,7 +74,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        poetry install --with dev --sync --no-root
+        poetry env remove --all
+        poetry install --with dev --sync --no-root --no-interaction
 
     - name: Security check dependencies
       run: poetry run safety check
