@@ -90,6 +90,20 @@ if (mobileMenuButton) {
     });
 }
 
+// Utility function to escape HTML special characters
+function escapeHTML(str) {
+    return str.replace(/[&<>"']/g, function (match) {
+        const escapeMap = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        };
+        return escapeMap[match];
+    });
+}
+
 // Template Preview Modal
 document.querySelectorAll('.template-card').forEach(card => {
     card.addEventListener('click', () => {
@@ -98,10 +112,10 @@ document.querySelectorAll('.template-card').forEach(card => {
         modal.innerHTML = `
             <div class="modal-content">
                 <span class="close-modal">&times;</span>
-                <img src="${card.querySelector('img').src}" alt="Template Preview">
+                <img src="${escapeHTML(card.querySelector('img').src)}" alt="Template Preview">
                 <div class="modal-info">
-                    <h3>${card.querySelector('h3').textContent}</h3>
-                    <p>${card.querySelector('p').textContent}</p>
+                    <h3>${escapeHTML(card.querySelector('h3').textContent)}</h3>
+                    <p>${escapeHTML(card.querySelector('p').textContent)}</p>
                 </div>
             </div>
         `;
