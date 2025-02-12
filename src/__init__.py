@@ -16,7 +16,7 @@ login_manager = LoginManager()
 csrf = CSRFProtect()
 session = Session()
 
-def create_app():
+def create_app(test_config=None):
     app = Flask(__name__,
         static_folder='../static',
         template_folder='../templates'
@@ -25,6 +25,10 @@ def create_app():
     # Load configuration
     from .config import Config
     app.config.from_object(Config)
+    
+    # Override with test config if provided
+    if test_config is not None:
+        app.config.update(test_config)
     
     # Ensure secret key is set
     app.secret_key = app.config['SECRET_KEY']
