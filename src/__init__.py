@@ -22,13 +22,13 @@ def create_app(test_config=None):
         template_folder='../templates'
     )
     
-    # Load configuration
-    from .config import Config
-    app.config.from_object(Config)
-    
-    # Override with test config if provided
     if test_config is not None:
+        # Load test config first
         app.config.update(test_config)
+    else:
+        # Load configuration
+        from .config import Config
+        app.config.from_object(Config)
     
     # Ensure secret key is set
     app.secret_key = app.config['SECRET_KEY']

