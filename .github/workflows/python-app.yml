@@ -88,9 +88,6 @@ jobs:
         name: codecov-umbrella
         fail_ci_if_error: false
 
-    - uses: anishathalye/proof-html@v2
-      with:
-        directory: ./site
 
   build:
     needs: test
