@@ -121,12 +121,20 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Configure custom domain
+      run: |
+        echo "ghost.sbs" > public/CNAME
+        
     - name: Upload to GitHub Packages
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        poetry config repositories.github https://maven.pkg.github.com/${{ github.repository }}
-        poetry publish --repository github --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }}
+        # Configure poetry to use GitHub Packages
+        poetry config repositories.github "https://github.com/GhostRelayX/spoofer/"
+        poetry config http-basic.github "${{ github.actor }}" "${{ secrets.GITHUB_TOKEN }}"
+        # Build and publish
+        poetry build
+        poetry publish -r github
 
   deploy:
     needs: build

@@ -48,8 +48,8 @@ class Config:
     WTF_CSRF_SECRET_KEY = SECRET_KEY
     
     # Domain Configuration
-    SERVER_NAME = None  # Important: Set to None to avoid routing issues
-    PREFERRED_URL_SCHEME = 'http'
+    SERVER_NAME = os.getenv('DOMAIN', 'ghost.sbs')  # Your domain
+    PREFERRED_URL_SCHEME = os.getenv('DOMAIN_SCHEME', 'https')  # Use HTTPS by default
     
     # Database Configuration
     SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI
@@ -79,6 +79,12 @@ class Config:
     # Email Limits
     MAX_EMAILS_PER_HOUR = MAX_EMAILS_PER_HOUR
     MAX_EMAILS_PER_DAY = MAX_EMAILS_PER_DAY
+
+    # Security Headers
+    STRICT_TRANSPORT_SECURITY = True
+    STRICT_TRANSPORT_SECURITY_PRELOAD = True
+    STRICT_TRANSPORT_SECURITY_MAX_AGE = 31536000  # 1 year
+    STRICT_TRANSPORT_SECURITY_INCLUDE_SUBDOMAINS = True
 
 def update_email_limits(per_hour=None, per_day=None):
     global MAX_EMAILS_PER_HOUR, MAX_EMAILS_PER_DAY
