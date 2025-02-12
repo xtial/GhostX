@@ -9,6 +9,8 @@ from .user import User, UserRole, Permission, PermissionType
 from .campaign import Campaign, CampaignStatus
 from .tracking import EmailTracking, EventType
 from .email_template import EmailTemplate
+from .session import Session
+from .security import LoginAttempt, APIRequest, SecurityLog
 
 __all__ = [
     'User',
@@ -19,5 +21,9 @@ __all__ = [
     'CampaignStatus',
     'EmailTracking',
     'EventType',
-    'EmailTemplate'
+    'EmailTemplate',
+    'Session',
+    'LoginAttempt',
+    'APIRequest',
+    'SecurityLog'
 ] 

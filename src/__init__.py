@@ -69,14 +69,14 @@ def create_app(test_config=None):
     
     # Register blueprints
     from .routes.auth import auth
-    from .routes.main import main
     from .routes.admin import admin
-    from .routes.api import api
+    from .routes.admin_api import admin_api
+    from .routes.main import main
     
     app.register_blueprint(auth, url_prefix='/')
-    app.register_blueprint(main, url_prefix='/')
     app.register_blueprint(admin, url_prefix='/admin')
-    app.register_blueprint(api, url_prefix='/api')
+    app.register_blueprint(admin_api, url_prefix='/api/admin')
+    app.register_blueprint(main, url_prefix='/')
     
     # Set up logging
     if not app.debug and not app.testing:

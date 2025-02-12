@@ -66,6 +66,8 @@ function createElementFromTemplate(templateId) {
 // Load users with role management
 async function loadUsers() {
     try {
+        loadingIndicator.show();
+        
         const response = await fetch('/api/admin/users', fetchOptions('GET'));
         const data = await response.json();
         
@@ -75,41 +77,61 @@ async function loadUsers() {
             userList.innerHTML = '';
             userRolesList.innerHTML = '';
             
-            data.users.forEach(user => {
-                // Create user list card
+            for (const user of data.users) {
                 const userCard = createElementFromTemplate('userListTemplate');
                 
-                // Set user card attributes and content
+                // Apply terminal effect to username
+                const usernameElement = userCard.querySelector('.username');
+                await terminalEffects.glitchText(usernameElement, user.username || 'Unknown User');
+                
+                // Enhanced user card setup
                 userCard.id = `user_${user.id}`;
                 userCard.classList.toggle('admin-user', user.is_admin);
                 
-                // Fill in user information
-                userCard.querySelector('.username').textContent = user.username || 'Unknown User';
                 userCard.querySelector('.user-role').textContent = formatPermissionName(user.role);
                 userCard.querySelector('.join-date').textContent = `Joined: ${user.join_date ? new Date(user.join_date).toLocaleDateString() : 'Unknown'}`;
                 
-                // Setup role select
+                // Add hover effects
+                userCard.addEventListener('mouseenter', () => {
+                    uiEffects.scanEffect(userCard);
+                });
+                
+                // Setup enhanced role select
                 const roleSelect = userCard.querySelector('.role-select');
                 if (roleSelect) {
                     roleSelect.dataset.userId = user.id;
                     if (user.role) {
                         roleSelect.value = user.role;
                     }
-                    roleSelect.addEventListener('change', (e) => updateUserRole(user.id, e.target.value));
+                    roleSelect.addEventListener('change', async (e) => {
+                        if (await userExperience.confirmAction('Are you sure you want to change this user\'s role?')) {
+                            updateUserRole(user.id, e.target.value);
+                        } else {
+                            e.target.value = user.role; // Revert if cancelled
+                        }
+                    });
                 }
                 
-                // Setup status toggle button
+                // Setup enhanced status toggle
                 const statusBtn = userCard.querySelector('.status-toggle');
                 if (statusBtn) {
                     statusBtn.classList.add(user.is_active ? 'warning' : 'success');
                     statusBtn.textContent = user.is_active ? 'Deactivate' : 'Activate';
-                    statusBtn.addEventListener('click', () => toggleUserStatus(user.id, !user.is_active));
+                    statusBtn.addEventListener('click', async () => {
+                        if (await userExperience.confirmAction(`Are you sure you want to ${user.is_active ? 'deactivate' : 'activate'} this user?`)) {
+                            toggleUserStatus(user.id, !user.is_active);
+                        }
+                    });
                 }
                 
-                // Setup delete button
+                // Setup enhanced delete button
                 const deleteBtn = userCard.querySelector('.delete-user');
                 if (deleteBtn) {
-                    deleteBtn.addEventListener('click', () => deleteUser(user.id));
+                    deleteBtn.addEventListener('click', async () => {
+                        if (await userExperience.confirmAction('Are you sure you want to delete this user? This action cannot be undone.')) {
+                            deleteUser(user.id);
+                        }
+                    });
                 }
                 
                 // Setup permissions container
@@ -155,12 +177,15 @@ async function loadUsers() {
                 userRolesList.appendChild(roleCard);
                 
                 // Load permissions for both containers
-                loadUserPermissions(user.id);
-            });
+                await loadUserPermissions(user.id);
+            }
+            
+            notifications.show(`Loaded ${data.users.length} users successfully`, 'success');
         }
     } catch (error) {
-        console.error('Error loading users:', error);
-        showNotification('Failed to load users', 'error');
+        await errorHandler.handle(error, 'Loading Users');
+    } finally {
+        loadingIndicator.hide();
     }
 }
 
@@ -951,81 +976,292 @@ function initTheme() {
 }
 
 // Initialize page
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize navigation
-    initNavigation();
-    
-    // Initialize charts
-    initCharts();
-    
-    // Load initial data
-    loadStats();
-    loadUsers();
-    loadSettings();
-    loadTemplates();
-    
-    // Add event listeners
-    const settingsForm = document.getElementById('settingsForm');
-    if (settingsForm) {
-        settingsForm.addEventListener('submit', saveSettings);
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        // Initialize navigation with effects
+        initNavigation();
+        
+        // Initialize charts with animation
+        initCharts();
+        
+        // Load initial data with loading indicators
+        await Promise.all([
+            loadStats(),
+            loadUsers(),
+            loadSettings(),
+            loadTemplates()
+        ]);
+        
+        // Add event listeners with enhanced confirmation
+        const settingsForm = document.getElementById('settingsForm');
+        if (settingsForm) {
+            settingsForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (await userExperience.confirmAction('Are you sure you want to save these settings?')) {
+                    saveSettings(e);
+                }
+            });
+        }
+        
+        // Enhanced logout handling
+        const logoutButton = document.getElementById('logoutButton');
+        if (logoutButton) {
+            logoutButton.addEventListener('click', async (e) => {
+                e.preventDefault();
+                if (await userExperience.confirmAction('Are you sure you want to log out?')) {
+                    handleLogout(e);
+                }
+            });
+        }
+        
+        // Initialize theme with enhanced effects
+        initTheme();
+        
+        // Show welcome message
+        await notifications.show('Welcome to GhostX Admin Control Center', 'success');
+        
+    } catch (error) {
+        await errorHandler.handle(error, 'Initialization');
     }
-    
-    const customEmailForm = document.getElementById('customEmailForm');
-    if (customEmailForm) {
-        customEmailForm.addEventListener('submit', handleCustomEmail);
-    }
-    
-    const logoutButton = document.getElementById('logoutButton');
-    if (logoutButton) {
-        logoutButton.addEventListener('click', handleLogout);
-    }
-    
-    // Add event listeners for role management
-    const roleFilter = document.getElementById('roleFilter');
-    const userSearch = document.getElementById('userSearch');
-    if (roleFilter && userSearch) {
-        roleFilter.addEventListener('change', filterUsers);
-        userSearch.addEventListener('input', filterUsers);
-    }
-    
-    // Load permissions
-    loadPermissions();
-    
-    // Make functions available globally
-    window.toggleUserStatus = toggleUserStatus;
-    window.deleteUser = deleteUser;
-    window.useTemplate = useTemplate;
-    window.previewTemplate = previewTemplate;
-    window.updateUserRole = updateUserRole;
-    window.toggleUserPermission = toggleUserPermission;
-    window.saveRolePermissions = saveRolePermissions;
-    
-    // Initialize theme
-    initTheme();
-
-    // Role management event listeners
-    const roleSelects = document.querySelectorAll('.role-select');
-    roleSelects.forEach(select => {
-        select.addEventListener('change', function() {
-            const userId = this.getAttribute('data-user-id');
-            const newRole = this.value;
-            updateUserRole(userId, newRole);
-        });
-    });
-
-    // Role permission checkboxes
-    const rolePermissionChecks = document.querySelectorAll('.role-permission-check');
-    rolePermissionChecks.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const role = this.getAttribute('data-role');
-            const permission = this.getAttribute('data-permission');
-            updateRolePermission(role, permission, this.checked);
-        });
-    });
-
-    // Load initial roles
-    loadRoles();
 });
+
+// Add terminal-like effects and enhanced functionality
+const terminalEffects = {
+    typeWriter: (element, text, speed = 50) => {
+        let i = 0;
+        element.innerHTML = '';
+        return new Promise(resolve => {
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                } else {
+                    resolve();
+                }
+            }
+            type();
+        });
+    },
+
+    glitchText: (element, finalText, duration = 1000) => {
+        const glitchChars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+        const steps = 10;
+        const stepDuration = duration / steps;
+        let step = 0;
+
+        return new Promise(resolve => {
+            const interval = setInterval(() => {
+                if (step >= steps) {
+                    clearInterval(interval);
+                    element.textContent = finalText;
+                    resolve();
+                    return;
+                }
+
+                let glitchedText = '';
+                for (let i = 0; i < finalText.length; i++) {
+                    if (Math.random() > 0.7) {
+                        glitchedText += glitchChars[Math.floor(Math.random() * glitchChars.length)];
+                    } else {
+                        glitchedText += finalText[i];
+                    }
+                }
+                element.textContent = glitchedText;
+                step++;
+            }, stepDuration);
+        });
+    }
+};
+
+// Enhanced notification system
+const notifications = {
+    queue: [],
+    isProcessing: false,
+
+    show: async (message, type = 'info', duration = 3000) => {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        
+        const icon = document.createElement('i');
+        icon.className = `fas fa-${type === 'success' ? 'check-circle' : 
+                                 type === 'error' ? 'exclamation-circle' : 
+                                 type === 'warning' ? 'exclamation-triangle' : 'info-circle'}`;
+        
+        const textSpan = document.createElement('span');
+        notification.appendChild(icon);
+        notification.appendChild(textSpan);
+        
+        document.body.appendChild(notification);
+        
+        await terminalEffects.typeWriter(textSpan, message, 30);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-in forwards';
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 300);
+        }, duration);
+    }
+};
+
+// Enhanced loading indicator
+const loadingIndicator = {
+    show: () => {
+        const loader = document.querySelector('.loading-indicator');
+        if (loader) {
+            loader.style.display = 'block';
+            loader.innerHTML = `
+                <div class="loader-content">
+                    <div class="loader-spinner"></div>
+                    <div class="loader-text">Processing...</div>
+                    <div class="loader-progress">
+                        <div class="progress-bar"></div>
+                    </div>
+                </div>
+            `;
+        }
+    },
+    
+    hide: () => {
+        const loader = document.querySelector('.loading-indicator');
+        if (loader) {
+            loader.style.display = 'none';
+        }
+    },
+    
+    updateProgress: (progress) => {
+        const progressBar = document.querySelector('.loader-progress .progress-bar');
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+        }
+    }
+};
+
+// Enhanced user interface effects
+const uiEffects = {
+    scanEffect: (element) => {
+        element.style.position = 'relative';
+        const scan = document.createElement('div');
+        scan.className = 'scan-effect';
+        element.appendChild(scan);
+        
+        setTimeout(() => {
+            element.removeChild(scan);
+        }, 2000);
+    },
+    
+    pulseEffect: (element) => {
+        element.classList.add('pulse');
+        setTimeout(() => {
+            element.classList.remove('pulse');
+        }, 1000);
+    },
+    
+    glitchEffect: (element) => {
+        element.classList.add('glitch');
+        setTimeout(() => {
+            element.classList.remove('glitch');
+        }, 1000);
+    }
+};
+
+// Enhanced error handling
+const errorHandler = {
+    handle: async (error, context = '') => {
+        console.error(`Error in ${context}:`, error);
+        
+        const errorMessage = error.message || 'An unknown error occurred';
+        await notifications.show(`[ERROR] ${context}: ${errorMessage}`, 'error');
+        
+        // Log to server
+        try {
+            await fetch('/api/admin/log-error', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': CSRF_TOKEN
+                },
+                body: JSON.stringify({
+                    context,
+                    error: errorMessage,
+                    stack: error.stack,
+                    timestamp: new Date().toISOString()
+                })
+            });
+        } catch (e) {
+            console.error('Failed to log error:', e);
+        }
+    }
+};
+
+// Enhanced security features
+const security = {
+    validateInput: (input) => {
+        const dangerousPatterns = [
+            /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+            /javascript:/gi,
+            /onerror=/gi,
+            /onload=/gi,
+            /onclick=/gi
+        ];
+        
+        return !dangerousPatterns.some(pattern => pattern.test(input));
+    },
+    
+    sanitizeInput: (input) => {
+        return input.replace(/[<>]/g, '');
+    },
+    
+    validatePermissions: async () => {
+        try {
+            const response = await fetch('/api/admin/validate-permissions', fetchOptions('GET'));
+            const data = await response.json();
+            
+            if (!data.success) {
+                await notifications.show('Permission validation failed!', 'error');
+                return false;
+            }
+            
+            return true;
+        } catch (error) {
+            await errorHandler.handle(error, 'Permission Validation');
+            return false;
+        }
+    }
+};
+
+// Enhanced user experience features
+const userExperience = {
+    confirmAction: (message) => {
+        return new Promise(resolve => {
+            const modal = document.createElement('div');
+            modal.className = 'modal confirmation-modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <h3>Confirm Action</h3>
+                    <p>${message}</p>
+                    <div class="modal-actions">
+                        <button class="auth-button confirm">Confirm</button>
+                        <button class="auth-button cancel">Cancel</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            modal.querySelector('.confirm').addEventListener('click', () => {
+                document.body.removeChild(modal);
+                resolve(true);
+            });
+            
+            modal.querySelector('.cancel').addEventListener('click', () => {
+                document.body.removeChild(modal);
+                resolve(false);
+            });
+        });
+    }
+};
 
 async function loadRolePermissions(role) {
     try {
@@ -1125,4 +1361,251 @@ async function updateRolePermission(role, permission, enabled) {
             checkbox.checked = !enabled;
         }
     }
-} 
+}
+
+// Security Monitoring Functions
+function initializeSecurityMonitoring() {
+    // Initialize Chart.js for metrics
+    const ctx = document.getElementById('securityMetricsChart').getContext('2d');
+    window.securityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Login Attempts',
+                borderColor: '#e74c3c',
+                data: []
+            }, {
+                label: 'API Requests',
+                borderColor: '#2ecc71',
+                data: []
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#ffffff'
+                    }
+                }
+            }
+        }
+    });
+
+    // Start real-time updates
+    updateSecurityStatus();
+    loadActiveSessions();
+    setInterval(updateSecurityStatus, 30000); // Update every 30 seconds
+    setInterval(updateMetrics, 5000); // Update metrics every 5 seconds
+}
+
+async function updateSecurityStatus() {
+    try {
+        const response = await fetch('/api/admin/system-status', fetchOptions('GET'));
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update status indicators
+            updateStatusIndicator('apiStatus', data.api_status);
+            updateStatusIndicator('dbStatus', data.db_status);
+            updateStatusIndicator('emailStatus', data.email_status);
+        } else {
+            throw new Error(data.message || 'Failed to update system status');
+        }
+    } catch (error) {
+        console.error('Error updating system status:', error);
+        showNotification('Failed to update system status', 'error');
+    }
+}
+
+function updateStatusIndicator(elementId, status) {
+    const indicator = document.getElementById(elementId);
+    if (indicator) {
+        indicator.className = 'status-indicator ' + status.toLowerCase();
+        indicator.title = `Last checked: ${new Date().toLocaleTimeString()}`;
+    }
+}
+
+async function loadActiveSessions() {
+    try {
+        const response = await fetch('/api/admin/active-sessions', fetchOptions('GET'));
+        const data = await response.json();
+        
+        if (data.success) {
+            const sessionsList = document.getElementById('activeSessions');
+            sessionsList.innerHTML = data.sessions.map(session => `
+                <div class="session-item">
+                    <div class="session-info">
+                        <span class="session-user">${session.username}</span>
+                        <span class="session-details">IP: ${session.ip} | Last active: ${session.last_active}</span>
+                    </div>
+                    <div class="session-actions">
+                        <button onclick="terminateSession('${session.id}')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            throw new Error(data.message || 'Failed to load active sessions');
+        }
+    } catch (error) {
+        console.error('Error loading active sessions:', error);
+        showNotification('Failed to load active sessions', 'error');
+    }
+}
+
+async function updateMetrics() {
+    try {
+        const response = await fetch('/api/admin/security-metrics', fetchOptions('GET'));
+        const data = await response.json();
+        
+        if (data.success) {
+            const chart = window.securityChart;
+            
+            // Update chart data
+            chart.data.labels = data.timestamps;
+            chart.data.datasets[0].data = data.login_attempts;
+            chart.data.datasets[1].data = data.api_requests;
+            
+            chart.update();
+            
+            // Update alerts
+            updateSecurityAlerts(data.alerts);
+        } else {
+            throw new Error(data.message || 'Failed to update metrics');
+        }
+    } catch (error) {
+        console.error('Error updating metrics:', error);
+        showNotification('Failed to update metrics', 'error');
+    }
+}
+
+function updateSecurityAlerts(alerts) {
+    const alertsList = document.getElementById('securityAlerts');
+    if (alertsList) {
+        alertsList.innerHTML = alerts.map(alert => `
+            <div class="alert-item ${alert.severity.toLowerCase()}">
+                <div class="alert-icon">
+                    <i class="fas fa-${getAlertIcon(alert.severity)}"></i>
+                </div>
+                <div class="alert-content">
+                    <div class="alert-title">${alert.title}</div>
+                    <div class="alert-message">${alert.message}</div>
+                    <div class="alert-time">${new Date(alert.timestamp).toLocaleString()}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+function getAlertIcon(severity) {
+    switch (severity.toLowerCase()) {
+        case 'high':
+            return 'exclamation-triangle';
+        case 'medium':
+            return 'exclamation-circle';
+        case 'low':
+            return 'info-circle';
+        default:
+            return 'bell';
+    }
+}
+
+async function terminateSession(sessionId) {
+    try {
+        if (!await userExperience.confirmAction('Are you sure you want to terminate this session?')) {
+            return;
+        }
+
+        const response = await fetch('/api/admin/terminate-session', fetchOptions('POST', {
+            session_id: sessionId
+        }));
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Session terminated successfully', 'success');
+            loadActiveSessions();
+        } else {
+            throw new Error(data.message || 'Failed to terminate session');
+        }
+    } catch (error) {
+        console.error('Error terminating session:', error);
+        showNotification(error.message || 'Failed to terminate session', 'error');
+    }
+}
+
+async function terminateAllSessions() {
+    try {
+        if (!await userExperience.confirmAction('Are you sure you want to terminate all sessions? This will log out all users.')) {
+            return;
+        }
+
+        const response = await fetch('/api/admin/terminate-all-sessions', fetchOptions('POST'));
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('All sessions terminated successfully', 'success');
+            loadActiveSessions();
+        } else {
+            throw new Error(data.message || 'Failed to terminate all sessions');
+        }
+    } catch (error) {
+        console.error('Error terminating all sessions:', error);
+        showNotification(error.message || 'Failed to terminate all sessions', 'error');
+    }
+}
+
+async function exportSecurityLogs() {
+    try {
+        const response = await fetch('/api/admin/security-logs', {
+            ...fetchOptions('GET'),
+            headers: {
+                ...fetchOptions('GET').headers,
+                'Accept': 'text/plain'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to export security logs');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `security-logs-${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showNotification('Security logs exported successfully', 'success');
+    } catch (error) {
+        console.error('Error exporting security logs:', error);
+        showNotification(error.message || 'Failed to export security logs', 'error');
+    }
+}
+
+// Initialize security monitoring when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('security')) {
+        initializeSecurityMonitoring();
+    }
+}); 

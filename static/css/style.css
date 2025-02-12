@@ -2617,4 +2617,260 @@ body.dark-theme .preview-pane {
     to {
         transform: rotate(1turn);
     }
+}
+
+/* Security Monitoring Styles */
+.security-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.security-card {
+    background: var(--dark);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.security-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+}
+
+.security-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.security-header i {
+    font-size: 1.5em;
+    color: var(--accent);
+}
+
+.security-header h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: 1.2em;
+}
+
+.security-status {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+}
+
+.status-label {
+    color: var(--text-secondary);
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--success);
+}
+
+.status-indicator.warning {
+    background: var(--warning);
+}
+
+.status-indicator.error {
+    background: var(--accent);
+}
+
+.sessions-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.session-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.session-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.session-user {
+    color: var(--text);
+    font-weight: 500;
+}
+
+.session-details {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.session-actions button {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 5px;
+    transition: all 0.3s;
+}
+
+.session-actions button:hover {
+    color: #c0392b;
+    transform: scale(1.1);
+}
+
+.metrics-container {
+    height: 200px;
+    position: relative;
+}
+
+.alerts-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.alert-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    border-left: 3px solid var(--accent);
+    background: rgba(255, 255, 255, 0.05);
+    margin-bottom: 10px;
+    border-radius: 0 5px 5px 0;
+}
+
+.alert-item.high {
+    border-left-color: var(--accent);
+}
+
+.alert-item.medium {
+    border-left-color: var(--warning);
+}
+
+.alert-item.low {
+    border-left-color: var(--success);
+}
+
+.alert-icon {
+    color: var(--accent);
+    font-size: 1.2em;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-title {
+    color: var(--text);
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.alert-message {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.alert-time {
+    color: var(--text-secondary);
+    font-size: 0.8em;
+    margin-top: 5px;
+}
+
+.security-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.alert-item.new {
+    animation: pulse 2s infinite;
+}
+
+@media (max-width: 768px) {
+    .security-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .security-actions {
+        flex-direction: column;
+    }
+    
+    .security-actions button {
+        width: 100%;
+    }
+}
+
+/* Matrix Rain Effect */
+.matrix-rain {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0.1;
+    z-index: 0;
+}
+
+.security-card {
+    position: relative;
+    z-index: 1;
+}
+
+/* Glitch Effect */
+@keyframes glitch {
+    0% {
+        transform: translate(0);
+    }
+    20% {
+        transform: translate(-2px, 2px);
+    }
+    40% {
+        transform: translate(-2px, -2px);
+    }
+    60% {
+        transform: translate(2px, 2px);
+    }
+    80% {
+        transform: translate(2px, -2px);
+    }
+    100% {
+        transform: translate(0);
+    }
+}
+
+.security-header h3:hover {
+    animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+    text-shadow: 0 0 10px var(--accent);
 } 

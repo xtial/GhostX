@@ -1,37 +1,172 @@
-from pathlib import Path
-import logging
-from datetime import datetime
+import os
+import sys
+import click
+from flask_migrate import Migrate
 from src import create_app, db
-from src.models import User, EmailTemplate
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+from src.models import (
+    User, UserRole, Session, LoginAttempt, 
+    APIRequest, SecurityLog, EmailTemplate, Permission
 )
-logger = logging.getLogger(__name__)
+from datetime import datetime, timezone
+import sqlalchemy as sa
+from sqlalchemy import inspect
 
-def init_db():
-    """Initialize the database with tables and default admin user"""
+def table_exists(engine, table_name):
+    """Check if a table exists"""
+    return inspect(engine).has_table(table_name)
+
+def cleanup_database():
+    """Clean up all tables in the database"""
     try:
-        app = create_app()
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
         
-        with app.app_context():
-            logger.info("Dropping existing tables...")
-            db.drop_all()
+        # Drop tables in correct order
+        if 'security_logs' in tables:
+            SecurityLog.__table__.drop(db.engine)
+        if 'api_requests' in tables:
+            APIRequest.__table__.drop(db.engine)
+        if 'login_attempts' in tables:
+            LoginAttempt.__table__.drop(db.engine)
+        if 'sessions' in tables:
+            Session.__table__.drop(db.engine)
+        if 'email_templates' in tables:
+            EmailTemplate.__table__.drop(db.engine)
+        if 'user_permissions' in tables:
+            db.Table('user_permissions',
+                db.Column('user_id', db.Integer, db.ForeignKey('users.id')),
+                db.Column('permission_id', db.Integer, db.ForeignKey('permissions.id')),
+                extend_existing=True
+            ).drop(db.engine)
+        if 'permissions' in tables:
+            Permission.__table__.drop(db.engine)
+        if 'users' in tables:
+            User.__table__.drop(db.engine)
+        
+        # Clear any remaining sessions
+        db.session.remove()
+        
+    except Exception as e:
+        click.echo(f'Warning during cleanup: {str(e)}')
+
+def create_security_tables(db_session):
+    """Create security tables using both SQLAlchemy and direct SQL"""
+    tables = {
+        'sessions': Session.__table__,
+        'login_attempts': LoginAttempt.__table__,
+        'api_requests': APIRequest.__table__,
+        'security_logs': SecurityLog.__table__
+    }
+    
+    for table_name, table in tables.items():
+        if not table_exists(db.engine, table_name):
+            try:
+                table.create(db.engine)
+                click.echo(f'Created table {table_name}')
+            except Exception as e:
+                click.echo(f'SQLAlchemy creation failed for {table_name}, falling back to SQL')
+                # If SQLAlchemy fails, fall back to direct SQL
+                if table_name == 'sessions':
+                    db_session.execute('''
+                        CREATE TABLE IF NOT EXISTS sessions (
+                            id VARCHAR(36) PRIMARY KEY,
+                            user_id INTEGER NOT NULL,
+                            ip_address VARCHAR(45) NOT NULL,
+                            user_agent VARCHAR(255),
+                            created_at DATETIME NOT NULL,
+                            last_active DATETIME NOT NULL,
+                            FOREIGN KEY (user_id) REFERENCES users (id)
+                        )
+                    ''')
+                elif table_name == 'login_attempts':
+                    db_session.execute('''
+                        CREATE TABLE IF NOT EXISTS login_attempts (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            username VARCHAR(255) NOT NULL,
+                            ip_address VARCHAR(45) NOT NULL,
+                            success BOOLEAN DEFAULT FALSE,
+                            timestamp DATETIME NOT NULL,
+                            user_agent VARCHAR(255)
+                        )
+                    ''')
+                elif table_name == 'api_requests':
+                    db_session.execute('''
+                        CREATE TABLE IF NOT EXISTS api_requests (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            endpoint VARCHAR(255) NOT NULL,
+                            method VARCHAR(10) NOT NULL,
+                            user_id INTEGER,
+                            ip_address VARCHAR(45) NOT NULL,
+                            status_code INTEGER,
+                            timestamp DATETIME NOT NULL,
+                            FOREIGN KEY (user_id) REFERENCES users (id)
+                        )
+                    ''')
+                elif table_name == 'security_logs':
+                    db_session.execute('''
+                        CREATE TABLE IF NOT EXISTS security_logs (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            title VARCHAR(255) NOT NULL,
+                            message TEXT NOT NULL,
+                            severity VARCHAR(20) NOT NULL,
+                            user_id INTEGER,
+                            timestamp DATETIME NOT NULL,
+                            FOREIGN KEY (user_id) REFERENCES users (id)
+                        )
+                    ''')
+
+@click.command()
+@click.option('--remake', is_flag=True, help='Recreate the database from scratch')
+@click.option('--migrate', is_flag=True, help='Run migrations without recreating the database')
+def setup_db(remake, migrate):
+    """Initialize the database."""
+    app = create_app()
+    app.app_context().push()
+    migrate = Migrate(app, db)
+    
+    try:
+        if remake:
+            click.echo('Removing existing database...')
+            if os.path.exists('spoofer.db'):
+                os.remove('spoofer.db')
             
-            logger.info("Creating new tables...")
+            click.echo('Cleaning up existing tables...')
+            cleanup_database()
+            
+            click.echo('Creating new database...')
             db.create_all()
             
-            # Create admin user
+            # Create initial admin user with minimal required fields
             admin = User(
-                username="admin",
+                username='admin',
+                email='admin@ghostx.com',
+                role=UserRole.ADMIN.value,
                 is_admin=True,
-                registration_ip="127.0.0.1",
-                last_login_ip="127.0.0.1",
-                is_active=True
+                is_active=True,
+                join_date=datetime.now(timezone.utc),
+                email_count=0,
+                daily_email_count=0,
+                successful_emails=0,
+                failed_emails=0,
+                total_campaigns=0,
+                total_templates=0,
+                total_opens=0,
+                total_clicks=0,
+                failed_login_attempts=0,
+                email_notifications=True,
+                two_factor_enabled=False
             )
-            admin.set_password("Admin@123")
+            admin.set_password('admin')
+            
+            # Check if admin user already exists
+            existing_admin = User.query.filter_by(username='admin').first()
+            if existing_admin:
+                click.echo('Admin user already exists, updating password...')
+                existing_admin.password_hash = admin.password_hash
+                db.session.commit()
+            else:
+                db.session.add(admin)
+                db.session.commit()
             
             # Add default email templates
             templates = [
@@ -60,53 +195,53 @@ def init_db():
                         <a href="{verification_link}" style="background-color: #F0B90B; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Verify Now</a>
                     </div>
                     """
-                ),
-                EmailTemplate(
-                    name="MetaMask Recovery",
-                    subject="MetaMask: Secure Your Wallet Now",
-                    html_content="""
-                    <div style="font-family: Arial, sans-serif;">
-                        <h2>MetaMask Security Alert</h2>
-                        <p>Important Notice:</p>
-                        <p>Your MetaMask wallet requires immediate attention. Please verify your recovery phrase to maintain access to your funds.</p>
-                        <p>Click below to secure your wallet:</p>
-                        <a href="{verification_link}" style="background-color: #E2761B; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Secure Wallet</a>
-                    </div>
-                    """
                 )
             ]
             
-            # Add templates to database
             for template in templates:
                 db.session.add(template)
             
-            # Add and commit admin user and templates
-            db.session.add(admin)
             db.session.commit()
             
-            logger.info("Database initialized successfully!")
-            logger.info("Default admin credentials:")
-            logger.info("Username: admin")
-            logger.info("Password: Admin@123")
-            logger.info("IMPORTANT: Please change the admin password after first login!")
+            # Add initial security log
+            security_log = SecurityLog(
+                title="System Initialization",
+                message="Database initialized with admin user and default templates",
+                severity="info",
+                user_id=1,
+                timestamp=datetime.now(timezone.utc)
+            )
+            db.session.add(security_log)
             
-            return True
+            db.session.commit()
+            click.echo('Created admin user (username: admin, password: admin)')
+            click.echo('Added default email templates')
             
+        if migrate or not remake:
+            # Initialize migrations
+            migrations_dir = os.path.join(os.path.dirname(__file__), 'migrations')
+            
+            if not os.path.exists(migrations_dir):
+                click.echo('Initializing migrations directory...')
+                with app.app_context():
+                    os.system(f'flask --app {__file__} db init')
+            
+            click.echo('Running database migrations...')
+            with app.app_context():
+                os.system(f'flask --app {__file__} db migrate -m "Initial migration including security tables"')
+                os.system(f'flask --app {__file__} db upgrade')
+            
+            # Create security tables using both methods for reliability
+            click.echo('Ensuring security tables exist...')
+            create_security_tables(db.session)
+            
+            db.session.commit()
+            click.echo('Security tables created/updated successfully')
+        
+        click.echo('Database setup completed successfully!')
     except Exception as e:
-        logger.error(f"Database initialization failed: {str(e)}")
-        return False
+        click.echo(f'Error: {str(e)}')
+        sys.exit(1)
 
-if __name__ == "__main__":
-    # Create database directory if it doesn't exist
-    db_dir = Path('instance')
-    db_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Initialize database
-    if init_db():
-        print("\nDatabase setup completed successfully!")
-        print("\nDefault admin credentials:")
-        print("Username: admin")
-        print("Password: Admin@123")
-        print("\nIMPORTANT: Please change the admin password after first login!")
-    else:
-        print("\nDatabase setup failed. Check the logs for details.") 
+if __name__ == '__main__':
+    setup_db() 

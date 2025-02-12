@@ -1,12 +1,12 @@
-Flask
-Flask-Login
-Flask-SQLAlchemy
-Flask-WTF
-Flask-Session
+Flask==3.0.2
+Flask-Login==0.6.3
+Flask-SQLAlchemy==3.1.1
+Flask-Session==0.6.0
+Flask-WTF==1.2.1
+Flask-Migrate==4.0.5
 Flask-Limiter
-Flask-Migrate
-SQLAlchemy
-Werkzeug
+SQLAlchemy==2.0.27
+Werkzeug==3.0.1
 Jinja2
 python-dotenv
 waitress>=3.0.1
@@ -14,7 +14,7 @@ beautifulsoup4
 gunicorn
 email-validator
 cryptography
-requests
+requests==2.31.0
 pytest
 black
 flake8
@@ -34,4 +34,5 @@ charset-normalizer
 idna
 alert-autofix-21
 bleach==6.2.0
-passlib>=1.7.4
+passlib==1.7.4
+psutil==5.9.8
