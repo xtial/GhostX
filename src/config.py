@@ -38,6 +38,10 @@ MAX_EMAILS_PER_DAY = int(os.getenv('MAX_EMAILS_PER_DAY', '50'))
 DOMAIN = os.getenv('DOMAIN')  # Your Namecheap domain
 DOMAIN_SCHEME = os.getenv('DOMAIN_SCHEME', 'http')
 
+# Database Configuration
+SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///spoofer.db')
+SQLALCHEMY_TRACK_MODIFICATIONS = False
+
 class Config:
     # Flask Configuration
     SECRET_KEY = os.getenv('SECRET_KEY') or 'e04ace37fd2f049884adf1ccf304c5fbdc1b2dd86326662d211626b1f48e74bf'
@@ -48,8 +52,8 @@ class Config:
     PREFERRED_URL_SCHEME = 'http'
     
     # Database Configuration
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///spoofer.db')
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI
+    SQLALCHEMY_TRACK_MODIFICATIONS = SQLALCHEMY_TRACK_MODIFICATIONS
     
     # Session Configuration
     SESSION_TYPE = 'filesystem'

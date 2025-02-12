@@ -29,6 +29,10 @@ def create_app(test_config=None):
         # Load configuration
         from .config import Config
         app.config.from_object(Config)
+        
+        # Ensure database URI is set
+        if 'SQLALCHEMY_DATABASE_URI' not in app.config:
+            app.config['SQLALCHEMY_DATABASE_URI'] = app.config.get('DATABASE_URL', 'sqlite:///spoofer.db')
     
     # Ensure secret key is set
     app.secret_key = app.config['SECRET_KEY']
