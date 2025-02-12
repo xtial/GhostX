@@ -12,7 +12,7 @@ jobs:
       pull-requests: write
     steps:
     - name: 'Auto-assign issue'
-      uses: pozil/auto-assign-issue@v1
+      uses: pozil/auto-assign-issue@c761acd6f5e6fb27a866a3c1696bec705dd527d8 # v1.12.0
       with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           assignees: xtial
