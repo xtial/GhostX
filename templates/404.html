@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Not Found</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .error-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        .error-code {
+            font-size: 8em;
+            font-weight: bold;
+            margin: 0;
+            background: linear-gradient(45deg, var(--text), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .error-message {
+            font-size: 1.5em;
+            margin: 20px 0;
+            color: var(--text);
+        }
+
+        .error-description {
+            color: var(--text);
+            opacity: 0.8;
+            max-width: 600px;
+            margin-bottom: 30px;
+        }
+
+        .home-button {
+            display: inline-block;
+            padding: 15px 30px;
+            background: var(--accent);
+            color: var(--text);
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .home-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-content">
+            <h1>404</h1>
+            <h2>Page Not Found</h2>
+            <p>The page you are looking for doesn't exist or has been moved.</p>
+            <a href="/" class="btn btn-primary">Go Home</a>
+        </div>
+    </div>
+</body>
+</html> 

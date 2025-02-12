@@ -1,0 +1,135 @@
+// Notification System
+export function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    
+    const container = document.getElementById('notifications');
+    container.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+// Form Validation
+function validateForm(formData) {
+    const errors = {};
+    
+    // Username validation
+    const username = formData.get('username');
+    if (!username || username.length < 3 || username.length > 20) {
+        errors.username = 'Username must be between 3 and 20 characters';
+    }
+    
+    // Password validation
+    const password = formData.get('password');
+    if (!password || password.length < 8) {
+        errors.password = 'Password must be at least 8 characters long';
+    }
+    
+    // Email validation
+    if (formData.has('email')) {
+        const email = formData.get('email');
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            errors.email = 'Please enter a valid email address';
+        }
+    }
+    
+    return errors;
+}
+
+// Dark Mode
+export function initDarkMode() {
+    const darkModeToggle = document.querySelector('.dark-mode-toggle');
+    if (darkModeToggle) {
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDarkMode);
+        });
+    }
+    
+    // Check for saved dark mode preference
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+    }
+}
+
+// API Helpers
+export async function apiRequest(url, options = {}) {
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('API Request failed:', error);
+        throw error;
+    }
+}
+
+// Date Formatting
+export function formatDate(date) {
+    return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
+
+// Copy to Clipboard
+export function copyToClipboard(text) {
+    return navigator.clipboard.writeText(text)
+        .then(() => true)
+        .catch(() => false);
+}
+
+// Input Validation
+function validateInput(input, type) {
+    const patterns = {
+        email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        username: /^[a-zA-Z0-9_]{3,20}$/,
+        password: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/
+    };
+    
+    return patterns[type]?.test(input) ?? false;
+}
+
+// Local Storage Helpers
+const storage = {
+    set: (key, value) => {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+            return true;
+        } catch (e) {
+            console.error('Error saving to localStorage:', e);
+            return false;
+        }
+    },
+    get: (key, defaultValue = null) => {
+        try {
+            const item = localStorage.getItem(key);
+            return item ? JSON.parse(item) : defaultValue;
+        } catch (e) {
+            console.error('Error reading from localStorage:', e);
+            return defaultValue;
+        }
+    },
+    remove: (key) => {
+        try {
+            localStorage.removeItem(key);
+            return true;
+        } catch (e) {
+            console.error('Error removing from localStorage:', e);
+            return false;
+        }
+    }
+}; 

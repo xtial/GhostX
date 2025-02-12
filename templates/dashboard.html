@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Ghostx - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/themes/light.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/theme-monokai.min.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="{{ url_for('main.dashboard') }}" class="nav-logo">
+                <i class="fas fa-envelope-open-text"></i> Ghostx
+            </a>
+            <div class="nav-links">
+                <a href="{{ url_for('main.dashboard') }}" class="nav-link active">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="#templates" class="nav-link">
+                    <i class="fas fa-layer-group"></i> Templates
+                </a>
+                <a href="#stats" class="nav-link">
+                    <i class="fas fa-chart-line"></i> Stats
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="nav-link" id="logoutButton">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+            <button class="theme-toggle" id="themeToggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="dashboard-header">
+            <h1>Welcome back, <span id="username">{{ current_user.username }}</span>!</h1>
+            <p>Your email spoofing dashboard</p>
+            <div class="quick-actions">
+                <button class="action-button" onclick="showTemplates()">
+                    <i class="fas fa-plus"></i> New Email
+                </button>
+                <button class="action-button" onclick="showStats()">
+                    <i class="fas fa-chart-bar"></i> View Stats
+                </button>
+            </div>
+        </div>
+
+        <div id="stats" class="stats-grid">
+            <div class="stat-card" data-tippy-content="Total emails you've sent">
+                <i class="fas fa-envelope"></i>
+                <div class="stat-number" id="emailCount">0</div>
+                <div class="stat-label">Emails Sent</div>
+                <div class="stat-trend">
+                    <span class="trend-icon"><i class="fas fa-arrow-up"></i></span>
+                    <span class="trend-value" id="emailTrend">0%</span>
+                </div>
+            </div>
+            <div class="stat-card" data-tippy-content="Success rate of sent emails">
+                <i class="fas fa-check-circle"></i>
+                <div class="stat-number" id="successRate">0%</div>
+                <div class="stat-label">Success Rate</div>
+                <div class="progress-bar">
+                    <div class="progress" id="successProgress"></div>
+                </div>
+            </div>
+            <div class="stat-card" data-tippy-content="Recent notifications">
+                <i class="fas fa-bell"></i>
+                <div class="stat-number" id="notificationCount">0</div>
+                <div class="stat-label">Notifications</div>
+                <div class="stat-trend">
+                    <span class="trend-icon"><i class="fas fa-clock"></i></span>
+                    <span class="trend-value" id="lastNotification">Never</span>
+                </div>
+            </div>
+            <div class="stat-card" data-tippy-content="Emails you can send in the current hour">
+                <i class="fas fa-clock"></i>
+                <div class="stat-number" id="hourlyLimit">0</div>
+                <div class="stat-label">Hourly Remaining</div>
+                <div class="progress-bar">
+                    <div class="progress" id="hourlyProgress"></div>
+                </div>
+                <div class="reset-time" id="hourlyReset">Resets in: --:--</div>
+            </div>
+            <div class="stat-card" data-tippy-content="Emails you can send today">
+                <i class="fas fa-calendar"></i>
+                <div class="stat-number" id="dailyLimit">0</div>
+                <div class="stat-label">Daily Remaining</div>
+                <div class="progress-bar">
+                    <div class="progress" id="dailyProgress"></div>
+                </div>
+                <div class="reset-time" id="dailyReset">Resets in: --:--</div>
+            </div>
+        </div>
+
+        <!-- Templates Section -->
+        <section id="templates" class="section">
+            <div class="section-header">
+                <h2><i class="fas fa-layer-group"></i> Email Templates</h2>
+                <div class="section-actions">
+                    <div class="search-box">
+                        <input type="text" id="templateSearch" placeholder="Search templates...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div class="filter-group">
+                        <select id="templateFilter" class="template-filter">
+                            <option value="all">All Templates</option>
+                            <option value="coinbase">Coinbase</option>
+                            <option value="google">Google</option>
+                            <option value="kraken">Kraken</option>
+                            <option value="trezor">Trezor</option>
+                        </select>
+                        <div class="favorite-filter">
+                            <input type="checkbox" id="showFavorites" onchange="filterTemplates()">
+                            <label for="showFavorites">
+                                <i class="fas fa-star"></i> Favorites Only
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="templates-section">
+                <div id="templateGrid" class="template-grid">
+                    <!-- Templates will be loaded dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Custom Email Section -->
+        <section id="custom-email" class="section">
+            <div class="section-header">
+                <h2><i class="fas fa-pen-fancy"></i> Custom Email</h2>
+                <div class="section-actions">
+                    <button class="action-button" id="saveTemplate">
+                        <i class="fas fa-save"></i> Save as Template
+                    </button>
+                    <button class="action-button" id="clearForm">
+                        <i class="fas fa-eraser"></i> Clear Form
+                    </button>
+                </div>
+            </div>
+            <div class="custom-email-section">
+                <form id="customEmailForm" class="custom-email-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="recipientEmail">
+                                <i class="fas fa-user"></i> Recipient Email
+                            </label>
+                            <input type="email" id="recipientEmail" name="recipientEmail" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="senderName">
+                                <i class="fas fa-user-tag"></i> Sender Name
+                            </label>
+                            <input type="text" id="senderName" name="senderName" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="senderEmail">
+                                <i class="fas fa-at"></i> Sender Email
+                            </label>
+                            <input type="email" id="senderEmail" name="senderEmail" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="emailSubject">
+                                <i class="fas fa-heading"></i> Subject
+                            </label>
+                            <input type="text" id="emailSubject" name="emailSubject" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="htmlContent">
+                            <i class="fas fa-code"></i> HTML Content
+                            <button type="button" class="editor-toggle" id="toggleEditor">
+                                <i class="fas fa-expand-alt"></i> Toggle Preview
+                            </button>
+                        </label>
+                        <div class="editor-container">
+                            <div id="htmlContent" class="code-editor"></div>
+                            <div id="preview" class="preview-pane"></div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="auth-button">
+                            <i class="fas fa-paper-plane"></i> Send Email
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Campaign Management Section -->
+        <!--
+        <section id="campaigns" class="section">
+            <div class="section-header">
+                <h2><i class="fas fa-mail-bulk"></i> Email Campaigns</h2>
+                <div class="section-actions">
+                    <button class="action-button" onclick="showNewCampaignModal()">
+                        <i class="fas fa-plus"></i> New Campaign
+                    </button>
+                </div>
+            </div>
+            <div class="campaigns-grid" id="campaignsGrid">
+                <!-- Campaigns will be loaded dynamically -->
+            </div>
+        </section>
+
+        <!-- New Campaign Modal -->
+        <div id="newCampaignModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Create New Campaign</h2>
+                    <button class="close-button" onclick="closeNewCampaignModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="newCampaignForm">
+                        <div class="form-group">
+                            <label for="campaignName">Campaign Name</label>
+                            <input type="text" id="campaignName" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="campaignDescription">Description</label>
+                            <textarea id="campaignDescription" name="description"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="templateSelect">Email Template</label>
+                            <select id="templateSelect" name="template_id" required>
+                                <!-- Templates will be loaded dynamically -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="enableABTest" name="is_ab_test">
+                                Enable A/B Testing
+                            </label>
+                        </div>
+                        <div id="abTestOptions" style="display: none;">
+                            <div class="form-group">
+                                <label for="templateBSelect">Template B</label>
+                                <select id="templateBSelect" name="template_b_id">
+                                    <!-- Templates will be loaded dynamically -->
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="abTestRatio">A/B Test Ratio</label>
+                                <input type="range" id="abTestRatio" name="ab_test_ratio" 
+                                       min="0" max="1" step="0.1" value="0.5">
+                                <span id="abTestRatioValue">50/50</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="scheduleTime">Schedule Time</label>
+                            <input type="datetime-local" id="scheduleTime" name="schedule_time">
+                        </div>
+                        <div class="form-group">
+                            <label for="sendRate">Send Rate (emails per hour)</label>
+                            <input type="number" id="sendRate" name="send_rate" 
+                                   min="1" max="100" value="10">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="auth-button">Create Campaign</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Campaign Details Modal -->
+        <div id="campaignDetailsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Campaign Details</h2>
+                    <button class="close-button" onclick="closeCampaignDetailsModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="campaign-stats">
+                        <div class="stat-row">
+                            <div class="stat-label">Status:</div>
+                            <div class="stat-value" id="campaignStatus"></div>
+                        </div>
+                        <div class="stat-row">
+                            <div class="stat-label">Progress:</div>
+                            <div class="stat-value">
+                                <div class="progress-bar">
+                                    <div class="progress" id="campaignProgress" style="width: 0%"></div>
+                                </div>
+                                <span id="campaignProgressText">0%</span>
+                            </div>
+                        </div>
+                        <div class="stat-grid">
+                            <div class="stat-item">
+                                <div class="stat-number" id="campaignTotalEmails">-</div>
+                                <div class="stat-label">Total Recipients</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number" id="campaignSentEmails">-</div>
+                                <div class="stat-label">Emails Sent</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number" id="campaignDeliveredEmails">-</div>
+                                <div class="stat-label">Delivered</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number" id="campaignOpenedEmails">-</div>
+                                <div class="stat-label">Opened</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number" id="campaignClickedEmails">-</div>
+                                <div class="stat-label">Clicked</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number" id="campaignFailedEmails">-</div>
+                                <div class="stat-label">Failed</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="campaign-actions">
+                        <button class="auth-button" id="pauseResumeButton">
+                            <i class="fas fa-pause"></i> Pause
+                        </button>
+                        <button class="auth-button warning" id="stopButton">
+                            <i class="fas fa-stop"></i> Stop
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        -->
+    </div>
+
+    <div id="notifications"></div>
+
+    <!-- Scripts -->
+    <script>
+        window.onerror = function(msg, url, line) {
+            console.error(`Error: ${msg}\nURL: ${url}\nLine: ${line}`);
+            return false;
+        };
+        window.CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ext-language_tools.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/theme-monokai.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/mode-html.js"></script>
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <script src="{{ url_for('static', filename='js/utils.js') }}" type="module"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}" type="module"></script>
+</body>
+</html> 
