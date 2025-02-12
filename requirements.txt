@@ -32,4 +32,6 @@ urllib3
 certifi
 charset-normalizer
 idna
+alert-autofix-21
+bleach==6.2.0
 passlib>=1.7.4
