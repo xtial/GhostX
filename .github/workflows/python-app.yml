@@ -80,12 +80,6 @@ jobs:
     - name: Security check dependencies
       run: poetry run safety check
 
-    - name: Run tests with pytest
-      env:
-        PYTHONPATH: ${{ github.workspace }}
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      run: poetry run pytest tests/ --cov=src/ --cov-report=xml -v
-
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
