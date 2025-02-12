@@ -382,19 +382,84 @@ def send_email():
             'message': str(e)
         }), 500
 
+@admin.route('/api/roles', methods=['GET'])
+@login_required
+@admin_required
+def get_roles():
+    try:
+        # Get all available roles from the UserRole enum
+        roles = [{
+            'name': role.value,
+            'description': role.name.replace('_', ' ').title(),
+            'permissions': [],
+            'user_count': User.query.filter_by(role=role.value).count(),
+            'is_admin_role': role.value in [UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value],
+            'is_default': role.value == UserRole.USER.value,
+            'can_be_modified': role.value not in [UserRole.SUPER_ADMIN.value]  # Protect super admin role
+        } for role in UserRole]
+        
+        # Get permissions for each role
+        for role_data in roles:
+            # Get a sample user with this role to get permissions
+            user = User.query.filter_by(role=role_data['name']).first()
+            if user:
+                role_data['permissions'] = [{
+                    'name': p.name,
+                    'description': p.name.replace('_', ' ').title(),
+                    'enabled': True
+                } for p in user.permissions]
+            
+            # Add all available permissions that aren't enabled
+            all_perms = set(perm.value for perm in PermissionType)
+            enabled_perms = set(p['name'] for p in role_data['permissions'])
+            disabled_perms = all_perms - enabled_perms
+            
+            role_data['permissions'].extend([{
+                'name': perm,
+                'description': perm.replace('_', ' ').title(),
+                'enabled': False
+            } for perm in disabled_perms])
+            
+            # Sort permissions by name
+            role_data['permissions'].sort(key=lambda x: x['name'])
+        
+        return jsonify({
+            'success': True,
+            'roles': roles
+        })
+    except Exception as e:
+        logger.error(f"Error getting roles: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @admin.route('/api/permissions')
 @login_required
 @admin_required
 def get_permissions():
     try:
+        # Get all available permissions with metadata
         permissions = [{
             'name': perm.value,
-            'description': perm.name.replace('_', ' ').title()
+            'description': perm.name.replace('_', ' ').title(),
+            'category': perm.category,
+            'is_admin_only': perm in PermissionType.admin_permissions(),
+            'required_roles': [r.value for r in UserRole if perm in PermissionType.default_permissions(r)],
+            'can_be_modified': True,  # Can be customized based on business rules
+            'dependencies': [p.value for p in perm.dependencies],
+            'conflicts_with': [p.value for p in perm.conflicts_with]
         } for perm in PermissionType]
+        
+        # Group permissions by category
+        categories = {}
+        for perm in permissions:
+            category = perm['category']
+            if category not in categories:
+                categories[category] = []
+            categories[category].append(perm)
         
         return jsonify({
             'success': True,
-            'permissions': permissions
+            'permissions': permissions,
+            'categories': categories
         })
     except Exception as e:
         logger.error(f"Error getting permissions: {str(e)}")
@@ -422,12 +487,30 @@ def update_user_role():
         if new_role not in [role.value for role in UserRole]:
             return jsonify({'success': False, 'message': 'Invalid role'}), 400
             
+        # Store old role for logging
+        old_role = user.role
+        
+        # Update user role
         user.role = new_role
+        
+        # Update is_admin flag based on role
+        user.is_admin = new_role in [UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value]
+        
+        # Commit changes
         db.session.commit()
+        
+        # Log the change
+        logger.info(f"Admin {current_user.username} updated user {user.username} role from {old_role} to {new_role}")
         
         return jsonify({
             'success': True,
-            'message': f'User role updated to {new_role}'
+            'message': f'User role updated to {new_role}',
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'role': user.role,
+                'is_admin': user.is_admin
+            }
         })
     except Exception as e:
         logger.error(f"Error updating user role: {str(e)}")
@@ -440,39 +523,70 @@ def update_user_role():
 def toggle_user_permission():
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({'success': False, 'message': 'No data provided'}), 400
-            
-        user_id = data.get('user_id')
-        permission = data.get('permission')
-        enabled = data.get('enabled', False)
-        
-        if not user_id or not permission:
-            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
-            
-        user = User.query.get(user_id)
+        if not data or 'user_id' not in data or 'permission' not in data or 'enabled' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'Missing required fields'
+            }), 400
+
+        user = User.query.get(data['user_id'])
         if not user:
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-            
+            return jsonify({
+                'success': False,
+                'message': 'User not found'
+            }), 404
+
         try:
-            permission_type = PermissionType(permission)
+            permission_type = PermissionType(data['permission'])
         except ValueError:
-            return jsonify({'success': False, 'message': 'Invalid permission'}), 400
-            
-        if enabled:
-            user.add_permission(permission_type)
+            return jsonify({
+                'success': False,
+                'message': 'Invalid permission type'
+            }), 400
+
+        # Don't allow modifying SUPER_ADMIN permissions
+        if user.role == UserRole.SUPER_ADMIN.value:
+            return jsonify({
+                'success': False,
+                'message': 'Cannot modify SUPER_ADMIN permissions'
+            }), 403
+
+        # Store old permission state for logging
+        had_permission = user.has_permission(permission_type)
+
+        if data['enabled']:
+            success = user.add_permission(permission_type)
         else:
-            user.remove_permission(permission_type)
+            success = user.remove_permission(permission_type)
+
+        if success:
+            # Commit changes to database
+            db.session.commit()
             
-        db.session.commit()
-        return jsonify({
-            'success': True,
-            'message': f'Permission {"added" if enabled else "removed"}'
-        })
+            # Log the change
+            logger.info(
+                f"Admin {current_user.username} {'added' if data['enabled'] else 'removed'} "
+                f"permission {permission_type.value} for user {user.username}"
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': f"Permission {'added' if data['enabled'] else 'removed'} successfully"
+            })
+        else:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'message': 'Failed to update permission'
+            }), 500
+
     except Exception as e:
-        logger.error(f"Error updating user permission: {str(e)}")
+        logger.error(f"Error in toggle_user_permission: {str(e)}")
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
 
 @admin.route('/api/admin/role/permissions', methods=['POST'])
 @login_required
@@ -510,4 +624,137 @@ def update_role_permissions():
             'message': f'Updated permissions for {role} role'
         })
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500 
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin.route('/api/role/<role>/permissions', methods=['GET'])
+@login_required
+@admin_required
+def get_role_permissions(role):
+    try:
+        if role not in [r.value for r in UserRole]:
+            return jsonify({'success': False, 'message': 'Invalid role'}), 400
+            
+        # Get a sample user with this role to get permissions
+        user = User.query.filter_by(role=role).first()
+        enabled_permissions = set()
+        
+        if user:
+            enabled_permissions = {p.name for p in user.permissions}
+        else:
+            # If no user exists with this role, use default permissions
+            role_enum = UserRole(role)
+            enabled_permissions = {p.value for p in PermissionType.default_permissions(role_enum)}
+        
+        # Get all available permissions
+        permissions = [{
+            'name': perm.value,
+            'description': perm.name.replace('_', ' ').title(),
+            'enabled': perm.value in enabled_permissions,
+            'category': perm.category,
+            'required_roles': [r.value for r in UserRole if perm in PermissionType.default_permissions(r)],
+            'is_admin_only': perm in PermissionType.admin_permissions(),
+            'can_be_modified': True,  # Can be customized based on business rules
+            'dependencies': [p.value for p in perm.dependencies],
+            'conflicts_with': [p.value for p in perm.conflicts_with]
+        } for perm in PermissionType]
+        
+        return jsonify({
+            'success': True,
+            'role': role,
+            'permissions': permissions,
+            'is_admin_role': role in [UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value],
+            'can_be_modified': role != UserRole.SUPER_ADMIN.value
+        })
+    except Exception as e:
+        logger.error(f"Error getting role permissions: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin.route('/api/role/permission', methods=['POST'])
+@login_required
+@admin_required
+def update_role_permission():
+    try:
+        data = request.get_json()
+        if not data or 'role' not in data or 'permission' not in data or 'enabled' not in data:
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+        
+        role = data['role']
+        permission = data['permission']
+        enabled = data['enabled']
+        
+        if role not in [r.value for r in UserRole]:
+            return jsonify({'success': False, 'message': 'Invalid role'}), 400
+            
+        try:
+            perm_type = PermissionType(permission)
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid permission'}), 400
+            
+        # Don't allow modifying SUPER_ADMIN permissions
+        if role == UserRole.SUPER_ADMIN.value:
+            return jsonify({'success': False, 'message': 'Cannot modify SUPER_ADMIN permissions'}), 403
+            
+        # Update permissions for all users with this role
+        users = User.query.filter_by(role=role).all()
+        updated_count = 0
+        
+        for user in users:
+            if enabled and not user.has_permission(perm_type):
+                user.add_permission(perm_type)
+                updated_count += 1
+            elif not enabled and user.has_permission(perm_type):
+                user.remove_permission(perm_type)
+                updated_count += 1
+        
+        db.session.commit()
+        
+        logger.info(
+            f"Admin {current_user.username} {'added' if enabled else 'removed'} "
+            f"permission {permission} for role {role}. {updated_count} users affected."
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Permission {"added to" if enabled else "removed from"} {role} role',
+            'updated_users': updated_count
+        })
+    except Exception as e:
+        logger.error(f"Error updating role permission: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin.route('/api/admin/user/<int:user_id>/permissions', methods=['GET'])
+@login_required
+@admin_required
+def get_user_permissions(user_id):
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'User not found'
+            }), 404
+
+        # Get all available permissions
+        all_permissions = [perm for perm in PermissionType]
+        
+        # Format permissions with enabled status
+        permissions = [{
+            'name': perm.value,
+            'description': perm.name.replace('_', ' ').title(),
+            'enabled': user.has_permission(perm),
+            'category': perm.category if hasattr(perm, 'category') else 'General',
+            'is_admin_only': perm in PermissionType.admin_permissions() if hasattr(PermissionType, 'admin_permissions') else False
+        } for perm in all_permissions]
+
+        return jsonify({
+            'success': True,
+            'permissions': permissions
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting user permissions: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500 

@@ -2455,4 +2455,166 @@ body.dark-theme .preview-pane {
     .campaign-stats {
         grid-template-columns: 1fr;
     }
+}
+
+/* Button Base Styles */
+.button,
+.auth-button,
+.template-button,
+.action-button,
+.nav-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--accent);
+    color: var(--text);
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Button Hover and Active States */
+.button:hover,
+.auth-button:hover,
+.template-button:hover,
+.action-button:hover,
+.nav-button:hover {
+    background: #c0392b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.button:active,
+.auth-button:active,
+.template-button:active,
+.action-button:active,
+.nav-button:active {
+    transform: translateY(0);
+}
+
+/* Button Variants */
+.button.secondary,
+.auth-button.secondary,
+.template-button.secondary,
+.action-button.secondary,
+.nav-button.secondary {
+    background: var(--secondary);
+}
+
+.button.warning,
+.auth-button.warning,
+.template-button.warning,
+.action-button.warning,
+.nav-button.warning {
+    background: var(--warning);
+    color: var(--dark);
+}
+
+.button.success,
+.auth-button.success,
+.template-button.success,
+.action-button.success,
+.nav-button.success {
+    background: var(--success);
+}
+
+.button.danger,
+.auth-button.danger,
+.template-button.danger,
+.action-button.danger,
+.nav-button.danger {
+    background: var(--accent);
+}
+
+/* Disabled State */
+.button:disabled,
+.auth-button:disabled,
+.template-button:disabled,
+.action-button:disabled,
+.nav-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Button Sizes */
+.button.small,
+.auth-button.small,
+.template-button.small,
+.action-button.small,
+.nav-button.small {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.button.large,
+.auth-button.large,
+.template-button.large,
+.action-button.large,
+.nav-button.large {
+    padding: 14px 28px;
+    font-size: 16px;
+}
+
+/* Icon Button */
+.icon-button {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Button Group */
+.button-group {
+    display: flex;
+    gap: 10px;
+}
+
+.button-group.vertical {
+    flex-direction: column;
+}
+
+/* Loading State */
+.button.loading,
+.auth-button.loading,
+.template-button.loading,
+.action-button.loading,
+.nav-button.loading {
+    position: relative;
+    color: transparent;
+}
+
+.button.loading::after,
+.auth-button.loading::after,
+.template-button.loading::after,
+.action-button.loading::after,
+.nav-button.loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top-color: var(--text);
+    border-right-color: var(--text);
+    border-radius: 50%;
+    animation: button-loading-spinner 0.75s linear infinite;
+}
+
+@keyframes button-loading-spinner {
+    from {
+        transform: rotate(0turn);
+    }
+    to {
+        transform: rotate(1turn);
+    }
 } 

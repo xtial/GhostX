@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from setuptools import setup, find_packages
 import os
 import sys
 from pathlib import Path
@@ -7,12 +6,6 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
-
-# Get the absolute path of the project root directory
-PROJECT_ROOT = Path(__file__).resolve().parent
-
-# Add the project root directory to Python path
-sys.path.insert(0, str(PROJECT_ROOT))
 
 def get_server_mode():
     """Get server mode from user input"""
@@ -37,7 +30,7 @@ def configure_environment(mode):
         os.environ['FLASK_ENV'] = 'development'
         os.environ['FLASK_DEBUG'] = 'True'
         os.environ['PORT'] = os.getenv('DEV_PORT', '5000')
-        os.environ['HOST'] = os.getenv('DEV_HOST', '127.0.0.1')
+        os.environ['HOST'] = os.getenv('DEV_HOST', 'localhost')
         os.environ['DOMAIN'] = os.getenv('DEV_DOMAIN', 'localhost:5000')
         os.environ['DOMAIN_SCHEME'] = os.getenv('DEV_DOMAIN_SCHEME', 'http')
     elif mode == "2":  # Production
@@ -48,8 +41,8 @@ def configure_environment(mode):
         os.environ['DOMAIN'] = os.getenv('DOMAIN', 'ghost.sbs')
         os.environ['DOMAIN_SCHEME'] = os.getenv('DOMAIN_SCHEME', 'http')
 
-def run_server():
-    """Run the Flask application"""
+def main():
+    """Main entry point for the server"""
     mode = get_server_mode()
     
     if mode == "5":  # Exit
@@ -83,7 +76,7 @@ def run_server():
             elif db_choice == "3":
                 os.system('flask db downgrade')
             elif db_choice == "4":
-                run_server()  # Back to main menu
+                main()  # Back to main menu
             else:
                 print("Invalid choice. Please try again.")
         return
@@ -118,42 +111,5 @@ def run_server():
             cleanup_interval=30
         )
 
-# Read README and requirements
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
-
-with open("requirements.txt", "r", encoding="utf-8") as fh:
-    requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
-
-# Setup configuration
-setup(
-    name="ghostx",
-    version="1.0.0",
-    author="Ghostx Team",
-    author_email="admin@ghost.sbs",
-    description="Professional Email Management System",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/GhostRelayX/spoofer.git",
-    packages=find_packages(),
-    classifiers=[
-        "Development Status :: 4 - Beta",
-        "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-    ],
-    python_requires=">=3.8",
-    install_requires=requirements,
-    include_package_data=True,
-    zip_safe=False,
-    entry_points={
-        "console_scripts": [
-            "ghostx=setup:run_server",
-        ],
-    },
-)
-
 if __name__ == "__main__":
-    run_server() 
+    main() 

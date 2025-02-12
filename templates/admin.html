@@ -377,6 +377,100 @@
             gap: 10px;
             margin: 20px 0;
         }
+
+        /* Button Overrides for Admin */
+        .user-actions .auth-button,
+        .template-actions .auth-button,
+        .role-actions .auth-button {
+            min-width: 100px;
+            margin: 5px 0;
+        }
+
+        .user-role-card .role-actions select {
+            padding: 8px;
+            border-radius: 4px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            transition: all var(--transition-speed);
+        }
+
+        .user-role-card .role-actions select:focus {
+            border-color: var(--accent-color);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(9, 132, 227, 0.1);
+        }
+
+        .permission-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+        }
+
+        .permission-check input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-color);
+        }
+
+        .permission-check label {
+            color: var(--text-primary);
+            font-size: 0.9em;
+        }
+
+        /* Theme Toggle Button Override */
+        .theme-toggle {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: 50%;
+            transition: all var(--transition-speed);
+        }
+
+        .theme-toggle:hover {
+            background-color: var(--bg-secondary);
+            transform: rotate(15deg);
+        }
+
+        /* Filter and Search Controls */
+        .filter-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px;
+            padding-left: 35px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
@@ -550,5 +644,50 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="module" src="{{ url_for('static', filename='js/utils.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/admin.js') }}"></script>
+
+    <!-- User Role Template -->
+    <template id="userRoleTemplate">
+        <div class="user-role-card">
+            <div class="user-role-info">
+                <h3 class="username"></h3>
+                <p class="role-status"></p>
+            </div>
+            <div class="role-actions">
+                <select class="role-select form-control">
+                    <option value="user">User</option>
+                    <option value="premium">Premium</option>
+                    <option value="admin">Admin</option>
+                    <option value="super_admin" disabled>Super Admin</option>
+                </select>
+            </div>
+            <div class="user-permissions">
+                <!-- Permissions will be loaded dynamically -->
+            </div>
+        </div>
+    </template>
+
+    <!-- User List Template -->
+    <template id="userListTemplate">
+        <div class="user-card">
+            <div class="user-info">
+                <h3 class="username"></h3>
+                <p>Role: <span class="user-role"></span></p>
+                <p class="join-date">Joined: </p>
+            </div>
+            <div class="user-actions">
+                <select class="role-select form-control">
+                    <option value="user">User</option>
+                    <option value="premium">Premium</option>
+                    <option value="admin">Admin</option>
+                    <option value="super_admin" disabled>Super Admin</option>
+                </select>
+                <button class="auth-button status-toggle"></button>
+                <button class="auth-button danger delete-user">Delete</button>
+            </div>
+            <div class="user-permissions">
+                <!-- Permissions will be loaded dynamically -->
+            </div>
+        </div>
+    </template>
 </body>
 </html> 

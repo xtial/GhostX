@@ -57,6 +57,12 @@ async function loadStats() {
     }
 }
 
+// Function to create an element from a template
+function createElementFromTemplate(templateId) {
+    const template = document.getElementById(templateId);
+    return template.content.cloneNode(true).firstElementChild;
+}
+
 // Load users with role management
 async function loadUsers() {
     try {
@@ -70,49 +76,86 @@ async function loadUsers() {
             userRolesList.innerHTML = '';
             
             data.users.forEach(user => {
-                // Regular user list card
-                const userCard = document.createElement('div');
-                userCard.className = 'user-card';
-                userCard.innerHTML = `
-                    <div class="user-info">
-                        <h3>${user.username}</h3>
-                        <p>Emails Sent: ${user.email_count}</p>
-                        <p>Joined: ${new Date(user.join_date).toLocaleDateString()}</p>
-                        <p>Status: ${user.is_active ? 'Active' : 'Banned'}</p>
-                        <p>Role: ${user.role}</p>
-                    </div>
-                    <div class="user-actions">
-                        <button class="auth-button ${user.is_active ? 'warning' : 'success'}" 
-                                onclick="toggleUserStatus(${user.id}, ${!user.is_active})">
-                            ${user.is_active ? 'Ban User' : 'Unban User'}
-                        </button>
-                        <button class="auth-button danger" onclick="deleteUser(${user.id})">
-                            Delete User
-                        </button>
-                    </div>
-                `;
+                // Create user list card
+                const userCard = createElementFromTemplate('userListTemplate');
+                
+                // Set user card attributes and content
+                userCard.id = `user_${user.id}`;
+                userCard.classList.toggle('admin-user', user.is_admin);
+                
+                // Fill in user information
+                userCard.querySelector('.username').textContent = user.username || 'Unknown User';
+                userCard.querySelector('.user-role').textContent = formatPermissionName(user.role);
+                userCard.querySelector('.join-date').textContent = `Joined: ${user.join_date ? new Date(user.join_date).toLocaleDateString() : 'Unknown'}`;
+                
+                // Setup role select
+                const roleSelect = userCard.querySelector('.role-select');
+                if (roleSelect) {
+                    roleSelect.dataset.userId = user.id;
+                    if (user.role) {
+                        roleSelect.value = user.role;
+                    }
+                    roleSelect.addEventListener('change', (e) => updateUserRole(user.id, e.target.value));
+                }
+                
+                // Setup status toggle button
+                const statusBtn = userCard.querySelector('.status-toggle');
+                if (statusBtn) {
+                    statusBtn.classList.add(user.is_active ? 'warning' : 'success');
+                    statusBtn.textContent = user.is_active ? 'Deactivate' : 'Activate';
+                    statusBtn.addEventListener('click', () => toggleUserStatus(user.id, !user.is_active));
+                }
+                
+                // Setup delete button
+                const deleteBtn = userCard.querySelector('.delete-user');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', () => deleteUser(user.id));
+                }
+                
+                // Setup permissions container
+                const permissionsContainer = userCard.querySelector('.user-permissions');
+                if (permissionsContainer) {
+                    permissionsContainer.id = `permissions_${user.id}`;
+                    permissionsContainer.dataset.userId = user.id;
+                }
+                
                 userList.appendChild(userCard);
 
-                // Role management card
-                const roleCard = document.createElement('div');
-                roleCard.className = 'user-role-card';
-                roleCard.innerHTML = `
-                    <div class="user-role-info">
-                        <h3>${user.username}</h3>
-                        <p>Current Role: ${user.role}</p>
-                    </div>
-                    <div class="role-actions">
-                        <select class="form-control" onchange="updateUserRole(${user.id}, this.value)">
-                            <option value="user" ${user.role === 'user' ? 'selected' : ''}>Regular User</option>
-                            <option value="premium" ${user.role === 'premium' ? 'selected' : ''}>Premium User</option>
-                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-                        </select>
-                    </div>
-                    <div class="permission-list">
-                        ${renderUserPermissions(user)}
-                    </div>
-                `;
+                // Create role management card
+                const roleCard = createElementFromTemplate('userRoleTemplate');
+                
+                // Fill in role card information
+                const usernameEl = roleCard.querySelector('.username');
+                const roleStatusEl = roleCard.querySelector('.role-status');
+                
+                if (usernameEl) {
+                    usernameEl.textContent = user.username || 'Unknown User';
+                }
+                if (roleStatusEl) {
+                    roleStatusEl.textContent = `Current Role: ${formatPermissionName(user.role)}`;
+                }
+                
+                // Setup role select
+                const roleManageSelect = roleCard.querySelector('.role-select');
+                if (roleManageSelect) {
+                    roleManageSelect.dataset.userId = user.id;
+                    if (user.role) {
+                        roleManageSelect.value = user.role;
+                    }
+                    roleManageSelect.addEventListener('change', (e) => updateUserRole(user.id, e.target.value));
+                }
+                
+                // Setup permissions container
+                const rolePermissions = roleCard.querySelector('.user-permissions');
+                if (rolePermissions) {
+                    rolePermissions.id = `permissions_${user.id}`;
+                    rolePermissions.dataset.userId = user.id;
+                }
+                
                 userRolesList.appendChild(roleCard);
+                
+                // Load permissions for both containers
+                loadUserPermissions(user.id);
             });
         }
     } catch (error) {
@@ -121,94 +164,213 @@ async function loadUsers() {
     }
 }
 
-// Render user permissions
-function renderUserPermissions(user) {
-    const permissions = [
-        'send_email', 'bulk_send', 'create_template', 
-        'edit_template', 'view_analytics', 'manage_users', 
-        'system_config'
-    ];
+// Load permissions for a specific user
+async function loadUserPermissions(userId) {
+    try {
+        const response = await fetch(`/admin/api/admin/user/${userId}/permissions`, fetchOptions('GET'));
+        
+        if (!response.ok) {
+            throw new Error(`Failed to load permissions: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+            const containers = document.querySelectorAll(`#permissions_${userId}`);
+            containers.forEach(container => {
+                if (container) {
+                    updatePermissionsDisplay(container, data.permissions);
+                }
+            });
+        } else {
+            throw new Error(data.message || 'Failed to load permissions');
+        }
+    } catch (error) {
+        console.error(`Error loading permissions for user ${userId}:`, error);
+        // Don't show notification for 404s as they might be expected
+        if (!error.message.includes('404')) {
+            showNotification(`Failed to load permissions: ${error.message}`, 'error');
+        }
+    }
+}
+
+// Helper function to update permissions display
+function updatePermissionsDisplay(container, permissions) {
+    if (!container || !permissions) return;
     
-    return `
-        <div class="user-permissions">
-            ${permissions.map(perm => `
-                <div class="permission-check">
-                    <input type="checkbox" 
-                           id="perm_${user.id}_${perm}"
-                           ${(user.permissions || []).includes(perm) ? 'checked' : ''}
-                           onchange="toggleUserPermission(${user.id}, '${perm}', this.checked)">
-                    <label for="perm_${user.id}_${perm}">${perm.replace('_', ' ').toUpperCase()}</label>
-                </div>
-            `).join('')}
+    container.innerHTML = permissions.map(perm => `
+        <div class="permission-check">
+            <input type="checkbox" 
+                   id="perm_${container.dataset.userId}_${perm.name}"
+                   ${perm.enabled ? 'checked' : ''}
+                   data-permission="${perm.name}"
+                   ${perm.is_admin_only ? 'disabled' : ''}>
+            <label for="perm_${container.dataset.userId}_${perm.name}" 
+                   title="${perm.description}">
+                ${formatPermissionName(perm.name)}
+            </label>
         </div>
-    `;
+    `).join('');
+    
+    // Add event listeners to checkboxes
+    container.querySelectorAll('input[type="checkbox"]:not([disabled])').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            toggleUserPermission(container.dataset.userId, e.target.dataset.permission, e.target.checked);
+        });
+    });
 }
 
 // Update user role
 async function updateUserRole(userId, newRole) {
+    // Store the select element
+    const roleSelect = document.querySelector(`select[data-user-id="${userId}"]`);
+    const originalRole = roleSelect ? roleSelect.value : null;
+    
     try {
-        const response = await fetch('/api/user/role', fetchOptions('POST', {
+        const response = await fetch('/admin/api/user/role', fetchOptions('POST', {
             user_id: userId,
             role: newRole
         }));
         
-        if (!response.ok) {
-            if (response.status === 401 || response.status === 403) {
-                window.location.href = '/auth/login';
-                return;
-            }
-            throw new Error(`Failed to update role: ${response.statusText}`);
-        }
-
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            throw new Error('Invalid response format');
-        }
-        
         const data = await response.json();
         
+        if (response.status === 401) {
+            // Session expired
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '/login';
+                return;
+        }
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to update role');
+        }
+        
         if (data.success) {
-            showNotification('User role updated successfully', 'success');
+            showNotification('Role updated successfully', 'success');
+            // Keep the new role selected
+            if (roleSelect) {
+                roleSelect.value = newRole;
+            }
+            // Update permissions display
+            const permissionsContainer = document.querySelector(`#permissions_${userId}`);
+            if (permissionsContainer && data.user.permissions) {
+                updatePermissionsDisplay(permissionsContainer, data.user.permissions);
+            }
+            // Update user card if admin status changed
+            const userCard = document.querySelector(`#user_${userId}`);
+            if (userCard) {
+                userCard.classList.toggle('admin-user', data.user.is_admin);
+            }
+            // Refresh the user list to show updated roles and permissions
             await loadUsers();
         } else {
-            throw new Error(data.message || 'Failed to update user role');
+            showNotification(data.message || 'Failed to update role', 'error');
+            // Revert role selection since update failed
+            if (roleSelect && originalRole) {
+                roleSelect.value = originalRole;
+            }
         }
     } catch (error) {
         console.error('Error updating user role:', error);
-        showNotification(error.message || 'Failed to update user role', 'error');
+        showNotification(error.message || 'Failed to update role', 'error');
+        // Revert role selection
+        if (roleSelect && originalRole) {
+            roleSelect.value = originalRole;
+        }
+    }
+}
+
+// Helper function to format permission names
+function formatPermissionName(permission) {
+    if (!permission) return 'Unknown';
+    
+    return permission.toString()
+        .toLowerCase()
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+// Load available roles
+async function loadRoles() {
+    try {
+        const response = await fetch('/admin/api/roles');
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to load roles');
+        }
+        
+        if (data.success) {
+            // Update role selects
+            const roleSelects = document.querySelectorAll('.role-select');
+            roleSelects.forEach(select => {
+                // Keep current selected value
+                const currentValue = select.value;
+                // Clear existing options
+                select.innerHTML = '';
+                // Add new options
+                data.roles.forEach(role => {
+                    const option = document.createElement('option');
+                    option.value = role.name;
+                    option.textContent = formatPermissionName(role.name);
+                    if (role.name === 'SUPER_ADMIN') {
+                        option.disabled = true;
+                    }
+                    select.appendChild(option);
+                });
+                // Restore selected value if it exists in new options
+                if (currentValue && [...select.options].some(opt => opt.value === currentValue)) {
+                    select.value = currentValue;
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error loading roles:', error);
+        showNotification('Failed to load roles', 'error');
     }
 }
 
 // Toggle user permission
 async function toggleUserPermission(userId, permission, enabled) {
+    // Store the checkbox element
+    const checkbox = document.getElementById(`perm_${userId}_${permission}`);
+    
     try {
-        const response = await fetch('/api/user/permission', fetchOptions('POST', {
+        const response = await fetch('/admin/api/user/permission', fetchOptions('POST', {
             user_id: userId,
-            permission: permission.toLowerCase(),
+            permission: permission,
             enabled: enabled
         }));
 
+        if (response.status === 401) {
+            // Session expired
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '/login';
+            return;
+        }
+
         if (!response.ok) {
-            if (response.status === 401 || response.status === 403) {
-                window.location.href = '/auth/login';
+            if (response.status === 401) {
+                // Unauthorized, redirect to login
+                window.location.href = '/login';
                 return;
             }
             throw new Error(`Failed to update permission: ${response.statusText}`);
         }
 
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            throw new Error('Invalid response format');
-        }
-
         const data = await response.json();
         if (data.success) {
             showNotification('Permission updated successfully', 'success');
-            await loadUsers();
+            // Keep the checkbox in its new state since update was successful
+            if (checkbox) {
+                checkbox.checked = enabled;
+            }
         } else {
             showNotification(data.message || 'Failed to update permission', 'error');
             // Revert checkbox state since update failed
-            const checkbox = document.getElementById(`perm_${userId}_${permission}`);
             if (checkbox) {
                 checkbox.checked = !enabled;
             }
@@ -216,8 +378,7 @@ async function toggleUserPermission(userId, permission, enabled) {
     } catch (error) {
         console.error('Error updating user permission:', error);
         showNotification(error.message || 'Failed to update permission', 'error');
-        // Revert checkbox state since update failed
-        const checkbox = document.getElementById(`perm_${userId}_${permission}`);
+        // Revert checkbox state on error
         if (checkbox) {
             checkbox.checked = !enabled;
         }
@@ -242,38 +403,47 @@ function filterUsers() {
 }
 
 // Save role permissions
-async function saveRolePermissions() {
-    const role = document.getElementById('roleSelect').value;
-    const permissions = Array.from(document.querySelectorAll('#permissionChecklist input:checked'))
-        .map(input => input.value);
-    
+async function saveRolePermissions(role, permission, enabled) {
     try {
-        const response = await fetch('/api/admin/role/permissions', fetchOptions('POST', {
+        const response = await fetch('/admin/api/role/permission', fetchOptions('POST', {
             role: role,
-            permissions: permissions
+            permission: permission,
+            enabled: enabled
         }));
         
         const data = await response.json();
         
         if (data.success) {
-            showNotification('Role permissions updated successfully', 'success');
+            showNotification('Role permission updated successfully', 'success');
         } else {
             throw new Error(data.message);
         }
     } catch (error) {
-        console.error('Error updating role permissions:', error);
-        showNotification(error.message || 'Failed to update role permissions', 'error');
+        console.error('Error updating role permission:', error);
+        showNotification(error.message || 'Failed to update role permission', 'error');
     }
 }
 
 // Load available permissions
 async function loadPermissions() {
     try {
-        const response = await fetch('/api/permissions', fetchOptions('GET'));
+        const response = await fetch('/admin/api/permissions', {
+            headers: {
+                'X-CSRF-Token': CSRF_TOKEN
+            }
+        });
+        
+        if (response.status === 401) {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '/login';
+            return;
+        }
         
         if (!response.ok) {
-            if (response.status === 401 || response.status === 403) {
-                window.location.href = '/auth/login';
+            if (response.status === 401) {
+                // Unauthorized, redirect to login
+                window.location.href = '/login';
                 return;
             }
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -286,43 +456,108 @@ async function loadPermissions() {
 
         const data = await response.json();
         
-        if (data.success) {
-            const permissionGrid = document.getElementById('permissionGrid');
-            const permissionChecklist = document.getElementById('permissionChecklist');
-            
-            if (!permissionGrid || !permissionChecklist) {
-                console.warn('Permission elements not found in the DOM');
-                return;
-            }
-
-            if (!data.permissions || !Array.isArray(data.permissions)) {
+        if (!data.success || !data.permissions) {
                 throw new Error('Invalid permissions data received');
             }
             
-            // Render available permissions
-            permissionGrid.innerHTML = data.permissions.map(perm => `
-                <div class="permission-item">
-                    <h4>${perm.name}</h4>
-                    <p>${perm.description || 'No description available'}</p>
+        const permissionsContainer = document.getElementById('permissionsContainer');
+        if (!permissionsContainer) return;
+
+        // Render permissions by category
+        permissionsContainer.innerHTML = Object.entries(data.categories).map(([category, permissions]) => `
+            <div class="permission-category">
+                <h3>${category}</h3>
+                <div class="permission-grid">
+                    ${permissions.map(perm => `
+                        <div class="permission-card ${perm.is_admin_only ? 'admin-only' : ''} 
+                                                   ${!perm.can_be_modified ? 'locked' : ''}">
+                            <div class="permission-header">
+                                <h4>${perm.description}</h4>
+                                ${perm.is_admin_only ? '<span class="badge admin">Admin Only</span>' : ''}
+                                ${!perm.can_be_modified ? '<i class="fas fa-lock" title="Cannot be modified"></i>' : ''}
+                            </div>
+                            <div class="permission-details">
+                                ${perm.required_roles.length > 0 ? `
+                                    <div class="required-roles">
+                                        <strong>Required for:</strong>
+                                        ${perm.required_roles.join(', ')}
+                                    </div>
+                                ` : ''}
+                                ${perm.dependencies.length > 0 ? `
+                                    <div class="dependencies">
+                                        <strong>Requires:</strong>
+                                        ${perm.dependencies.join(', ')}
+                                    </div>
+                                ` : ''}
+                                ${perm.conflicts_with.length > 0 ? `
+                                    <div class="conflicts">
+                                        <strong>Conflicts with:</strong>
+                                        ${perm.conflicts_with.join(', ')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
                 </div>
             `).join('');
-            
-            // Render permission checklist
-            permissionChecklist.innerHTML = data.permissions.map(perm => `
-                <div class="permission-check">
-                    <input type="checkbox" id="role_perm_${perm.name}" value="${perm.name}">
-                    <label for="role_perm_${perm.name}">${perm.name}</label>
-                </div>
-            `).join('');
-        } else {
-            throw new Error(data.message || 'Failed to load permissions');
+
+        // Add event listeners to checkboxes
+        permissionChecklist.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', async (e) => {
+                const permission = e.target.dataset.permission;
+                const enabled = e.target.checked;
+                const role = roleSelect ? roleSelect.value : null;
+
+                if (role) {
+                    try {
+                        await saveRolePermissions(role, permission, enabled);
+                    } catch (error) {
+                        console.error('Error updating permission:', error);
+                        e.target.checked = !enabled; // Revert on error
+                        showNotification('Failed to update permission', 'error');
+                    }
+                }
+            });
+        });
+
+        // If role select exists, add change handler
+        if (roleSelect) {
+            roleSelect.addEventListener('change', async () => {
+                const selectedRole = roleSelect.value;
+                try {
+                    const rolePermsResponse = await fetch(`/admin/api/role/${selectedRole}/permissions`, 
+                        fetchOptions('GET')
+                    );
+                    
+                    if (!rolePermsResponse.ok) {
+                        throw new Error('Failed to fetch role permissions');
+                    }
+
+                    const rolePermsData = await rolePermsResponse.json();
+                    if (rolePermsData.success) {
+                        // Update checkboxes based on role permissions
+                        const checkboxes = permissionChecklist.querySelectorAll('input[type="checkbox"]');
+                        checkboxes.forEach(checkbox => {
+                            checkbox.checked = rolePermsData.permissions.includes(checkbox.dataset.permission);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error loading role permissions:', error);
+                    showNotification('Failed to load role permissions', 'error');
+                }
+            });
+
+            // Load initial permissions for selected role
+            roleSelect.dispatchEvent(new Event('change'));
         }
+
     } catch (error) {
         console.error('Error loading permissions:', error);
         showNotification('Failed to load permissions', 'error');
         
         if (error.message && error.message.toLowerCase().includes('unauthorized')) {
-            window.location.href = '/auth/login';
+            window.location.href = '/login';
         }
     }
 }
@@ -667,13 +902,10 @@ async function handleLogout(event) {
                 window.location.href = '/login';
             }, 1000);
         }
-
-        // Redirect to login page regardless of response
-        window.location.href = '/auth/login';
     } catch (error) {
         console.error('Error during logout:', error);
         // Still redirect to login page on error
-        window.location.href = '/auth/login';
+        window.location.href = '/login';
     }
 }
 
@@ -770,4 +1002,127 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize theme
     initTheme();
-}); 
+
+    // Role management event listeners
+    const roleSelects = document.querySelectorAll('.role-select');
+    roleSelects.forEach(select => {
+        select.addEventListener('change', function() {
+            const userId = this.getAttribute('data-user-id');
+            const newRole = this.value;
+            updateUserRole(userId, newRole);
+        });
+    });
+
+    // Role permission checkboxes
+    const rolePermissionChecks = document.querySelectorAll('.role-permission-check');
+    rolePermissionChecks.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const role = this.getAttribute('data-role');
+            const permission = this.getAttribute('data-permission');
+            updateRolePermission(role, permission, this.checked);
+        });
+    });
+
+    // Load initial roles
+    loadRoles();
+});
+
+async function loadRolePermissions(role) {
+    try {
+        const response = await fetch(`/admin/api/role/${role}/permissions`, {
+            headers: {
+                'X-CSRF-Token': CSRF_TOKEN
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to load role permissions: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            // Update permission checkboxes for the role
+            const permissions = data.permissions;
+            const checkboxes = document.querySelectorAll('.permission-check input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = permissions.includes(checkbox.value);
+            });
+        } else {
+            showNotification(data.message || 'Failed to load role permissions', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading role permissions:', error);
+        showNotification(error.message || 'Failed to load role permissions', 'error');
+    }
+}
+
+async function updateRolePermission(role, permission, enabled) {
+    try {
+        // Find all checkboxes for this permission across roles
+        const relatedCheckboxes = document.querySelectorAll(
+            `input[data-permission="${permission}"]`
+        );
+
+        const response = await fetch('/admin/api/role/permission', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': CSRF_TOKEN
+            },
+            body: JSON.stringify({
+                role,
+                permission,
+                enabled
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update role permission: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            showNotification(`Permission ${enabled ? 'enabled' : 'disabled'} for ${data.updated_users} users`, 'success');
+            
+            // If this is a dependency or conflicting permission, update related checkboxes
+            if (enabled) {
+                // Enable required dependencies
+                const dependencies = relatedCheckboxes[0]?.dataset.dependencies?.split(',') || [];
+                for (const dep of dependencies) {
+                    const depCheckbox = document.querySelector(
+                        `input[data-role="${role}"][data-permission="${dep}"]:not(:checked)`
+                    );
+                    if (depCheckbox) {
+                        depCheckbox.checked = true;
+                        await updateRolePermission(role, dep, true);
+                    }
+                }
+
+                // Disable conflicting permissions
+                const conflicts = relatedCheckboxes[0]?.dataset.conflicts?.split(',') || [];
+                for (const conflict of conflicts) {
+                    const conflictCheckbox = document.querySelector(
+                        `input[data-role="${role}"][data-permission="${conflict}"]:checked`
+                    );
+                    if (conflictCheckbox) {
+                        conflictCheckbox.checked = false;
+                        await updateRolePermission(role, conflict, false);
+                    }
+                }
+            }
+        } else {
+            throw new Error(data.message || 'Failed to update permission');
+        }
+    } catch (error) {
+        console.error('Error updating role permission:', error);
+        showNotification(error.message || 'Failed to update permission', 'error');
+        
+        // Revert checkbox state
+        const checkbox = document.querySelector(
+            `input[data-role="${role}"][data-permission="${permission}"]`
+        );
+        if (checkbox) {
+            checkbox.checked = !enabled;
+        }
+    }
+} 

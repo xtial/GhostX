@@ -224,73 +224,124 @@ def login():
             'message': 'An error occurred during login'
         }), 500
 
-@auth.route('/logout')
+@auth.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
+    """Handle regular logout requests with page redirect"""
     try:
-        # Get username before logout for logging
+        # Store info before logout
+        was_admin = current_user.is_admin
         username = current_user.username
         
-        # Logout the user using Flask-Login
+        # Update last activity
+        current_user.last_login_date = datetime.utcnow()
+        db.session.commit()
+        
+        # Perform logout
         logout_user()
         
-        # Clear Flask session
+        # Clear all session data
         session.clear()
         
         # Create response with logout page
         response = make_response(render_template('logout.html'))
         
-        # Clear all cookies that might be used for authentication
-        response.delete_cookie('session')
-        response.delete_cookie('remember_token')
-        response.delete_cookie('user_id')
+        # Clear all authentication-related cookies
+        cookies_to_clear = [
+            'session',
+            'remember_token',
+            'user_id',
+            '_fresh',
+            '_id',
+            'csrf_token'
+        ]
         
-        # Set no-cache headers to prevent browser back button from showing protected pages
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+        for cookie in cookies_to_clear:
+            response.delete_cookie(cookie, path='/', domain=None)
+        
+        # Set security headers
+        response.headers.update({
+            'Cache-Control': 'no-cache, no-store, must-revalidate, private',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Frame-Options': 'DENY',
+            'X-Content-Type-Options': 'nosniff',
+            'Clear-Site-Data': '"cache", "cookies", "storage"'
+        })
         
         # Log the logout
-        logger.info(f"User logged out: {username}")
+        logger.info(f"User logged out successfully: {username} (Admin: {was_admin})")
         
         return response
         
     except Exception as e:
-        logger.error(f"Logout error: {str(e)}")
+        logger.error(f"Error during logout: {str(e)}")
+        # Even if there's an error, try to clear the session
+        session.clear()
         return redirect(url_for('auth.login_page'))
 
-@auth.route('/api/logout')
+@auth.route('/api/logout', methods=['POST'])
 @login_required
 def logout_api():
+    """Handle API logout requests with JSON response"""
     try:
-        # Get username before logout for logging
+        # Store info before logout
+        was_admin = current_user.is_admin
         username = current_user.username
         
-        # Logout the user
+        # Update last activity
+        current_user.last_login_date = datetime.utcnow()
+        db.session.commit()
+        
+        # Perform logout
         logout_user()
         
-        # Clear session data
+        # Clear all session data
         session.clear()
         
-        # Clear any session cookies
+        # Prepare response
         response = jsonify({
             'success': True,
+            'message': 'Logged out successfully',
             'redirect': url_for('auth.login_page')
         })
         
-        # Clear session cookie
-        response.delete_cookie('session')
+        # Clear all authentication-related cookies
+        cookies_to_clear = [
+            'session',
+            'remember_token',
+            'user_id',
+            '_fresh',
+            '_id',
+            'csrf_token'
+        ]
+        
+        for cookie in cookies_to_clear:
+            response.delete_cookie(cookie, path='/', domain=None)
+        
+        # Set security headers
+        response.headers.update({
+            'Cache-Control': 'no-cache, no-store, must-revalidate, private',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-Frame-Options': 'DENY',
+            'X-Content-Type-Options': 'nosniff',
+            'Clear-Site-Data': '"cache", "cookies", "storage"'
+        })
         
         # Log the logout
-        logger.info(f"User logged out: {username}")
+        logger.info(f"API logout successful: {username} (Admin: {was_admin})")
         
         return response
         
     except Exception as e:
-        logger.error(f"Logout error: {str(e)}")
+        logger.error(f"Error during API logout: {str(e)}")
+        # Even if there's an error, try to clear the session
+        session.clear()
         return jsonify({
             'success': False,
-            'message': 'Logout failed'
+            'message': 'Logout failed, but session was cleared',
+            'redirect': url_for('auth.login_page')
         }), 500
 
 # Admin routes

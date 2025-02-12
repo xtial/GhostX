@@ -307,16 +307,50 @@ async function handleRegister(event) {
 }
 
 // Handle Logout
-function handleLogout(e) {
+async function handleLogout(e) {
     if (e) {
         e.preventDefault();
     }
-    // Clear any client-side storage
-    localStorage.clear();
-    sessionStorage.clear();
     
-    // Redirect to logout page
-    window.location.href = '/logout';
+    try {
+        // First try API logout
+        const response = await fetch('/api/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+            },
+            credentials: 'same-origin'
+        });
+        
+        // Clear all client-side storage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear all cookies
+        document.cookie.split(";").forEach(function(c) {
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                window.location.href = data.redirect || '/login';
+            } else {
+                // If API logout fails, try regular logout
+                window.location.href = '/logout';
+            }
+        } else {
+            // If API request fails, fallback to regular logout
+            window.location.href = '/logout';
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+        // If everything fails, force clear and redirect
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/api/login';
+    }
 }
 
 // Handle form submissions
@@ -527,11 +561,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Logout button handler
-    const logoutButton = document.getElementById('logoutButton');
-    if (logoutButton) {
-        logoutButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            handleLogout();
-        });
-    }
+    const logoutButtons = document.querySelectorAll('[id^="logoutButton"]');
+    logoutButtons.forEach(button => {
+        button.addEventListener('click', handleLogout);
+    });
 }); 
