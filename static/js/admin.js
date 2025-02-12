@@ -224,8 +224,8 @@ function updatePermissionsDisplay(container, permissions) {
     if (!container || !permissions) return;
     
     container.innerHTML = permissions.map(perm => `
-        <div class="permission-check">
-            <input type="checkbox" 
+                <div class="permission-check">
+                    <input type="checkbox" 
                    id="perm_${container.dataset.userId}_${perm.name}"
                    ${perm.enabled ? 'checked' : ''}
                    data-permission="${perm.name}"
@@ -234,7 +234,7 @@ function updatePermissionsDisplay(container, permissions) {
                    title="${perm.description}">
                 ${formatPermissionName(perm.name)}
             </label>
-        </div>
+                </div>
     `).join('');
     
     // Add event listeners to checkboxes
@@ -979,11 +979,11 @@ function initTheme() {
 document.addEventListener('DOMContentLoaded', async function() {
     try {
         // Initialize navigation with effects
-        initNavigation();
-        
+    initNavigation();
+    
         // Initialize charts with animation
-        initCharts();
-        
+    initCharts();
+    
         // Load initial data with loading indicators
         await Promise.all([
             loadStats(),
@@ -993,19 +993,19 @@ document.addEventListener('DOMContentLoaded', async function() {
         ]);
         
         // Add event listeners with enhanced confirmation
-        const settingsForm = document.getElementById('settingsForm');
-        if (settingsForm) {
+    const settingsForm = document.getElementById('settingsForm');
+    if (settingsForm) {
             settingsForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (await userExperience.confirmAction('Are you sure you want to save these settings?')) {
                     saveSettings(e);
-                }
+    }
             });
-        }
-        
+    }
+    
         // Enhanced logout handling
-        const logoutButton = document.getElementById('logoutButton');
-        if (logoutButton) {
+    const logoutButton = document.getElementById('logoutButton');
+    if (logoutButton) {
             logoutButton.addEventListener('click', async (e) => {
                 e.preventDefault();
                 if (await userExperience.confirmAction('Are you sure you want to log out?')) {
@@ -1361,7 +1361,7 @@ async function updateRolePermission(role, permission, enabled) {
             checkbox.checked = !enabled;
         }
     }
-}
+} 
 
 // Security Monitoring Functions
 function initializeSecurityMonitoring() {

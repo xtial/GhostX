@@ -1,5 +1,20 @@
 import { showNotification } from './utils.js';
 
+// Loading overlay control
+function showLoadingOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.add('active');
+    }
+}
+
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
+}
+
 // Get CSRF token from meta tag
 const getCSRFToken = () => {
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -156,12 +171,7 @@ async function handleLogin(event) {
     const password = document.getElementById('loginPassword').value;
     const errorElement = document.getElementById('loginError');
     const form = event.target;
-    
-    // Disable form while processing
     const submitButton = form.querySelector('button[type="submit"]');
-    if (submitButton) {
-        submitButton.disabled = true;
-    }
     
     // Clear previous error
     if (errorElement) {
@@ -175,6 +185,13 @@ async function handleLogin(event) {
             throw new Error('Please fill in all fields');
         }
         
+        // Show loading state
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.classList.add('loading');
+        }
+        showLoadingOverlay();
+        
         console.log('Sending login request...');
         
         // Make API request using fetchWithCSRF
@@ -184,7 +201,6 @@ async function handleLogin(event) {
         });
         
         console.log('Response received:', response.status, response.statusText);
-        console.log('Response headers:', Object.fromEntries([...response.headers]));
         
         // Check content type before trying to parse JSON
         const contentType = response.headers.get('content-type');
@@ -203,7 +219,12 @@ async function handleLogin(event) {
         if (data.success) {
             showNotification(data.message || 'Login successful!', 'success');
             setTimeout(() => {
-                window.location.href = data.redirect;
+                // Redirect based on user role
+                if (data.is_admin) {
+                    window.location.href = '/admin';
+                } else {
+                    window.location.href = data.redirect || '/dashboard';
+                }
             }, 500);
         } else {
             throw new Error(data.message || 'Login failed');
@@ -218,10 +239,12 @@ async function handleLogin(event) {
             errorElement.style.display = 'block';
         }
     } finally {
-        // Re-enable form
+        // Hide loading state
         if (submitButton) {
             submitButton.disabled = false;
+            submitButton.classList.remove('loading');
         }
+        hideLoadingOverlay();
     }
 }
 

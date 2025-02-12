@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, session, redirect, url_for, render_template, current_app, make_response
+from flask import Blueprint, request, jsonify, session, redirect, url_for, render_template, current_app, make_response, flash
 from flask_wtf.csrf import generate_csrf, CSRFProtect, CSRFError
 from flask_login import login_required, current_user, login_user, logout_user
 from src.models import db, User
@@ -64,9 +64,23 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
+            flash('Please log in to access this page.', 'error')
             return redirect(url_for('auth.login_page', next=request.url))
         if not current_user.is_admin:
-            return jsonify({'success': False, 'message': 'Admin access required'}), 403
+            flash('You do not have permission to access this page.', 'error')
+            return redirect(url_for('main.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def user_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('Please log in to access this page.', 'error')
+            return redirect(url_for('auth.login_page', next=request.url))
+        if current_user.is_admin:
+            flash('Please use the admin dashboard.', 'info')
+            return redirect(url_for('admin.dashboard'))
         return f(*args, **kwargs)
     return decorated_function
 

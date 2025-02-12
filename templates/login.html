@@ -4,41 +4,503 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>Ghostx - Login</title>
+    <meta name="description" content="Login to your GhostX account - Secure email spoofing service">
+    <meta name="theme-color" content="#000000">
+    <title>GhostX - Login</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon_io/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon_io/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon_io/favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='favicon_io/site.webmanifest') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0a0f16;
+            --bg-secondary: #1a1f26;
+            --text-primary: #00ff00;
+            --text-secondary: #00cc00;
+            --accent-color: #00ff00;
+            --border-color: #00ff00;
+            --error-color: #ff3333;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', monospace;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+
+        .auth-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .auth-logo {
+            text-decoration: none;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .auth-logo i {
+            font-size: 2rem;
+        }
+
+        .auth-logo h1 {
+            font-size: 2rem;
+            margin: 0;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+        }
+
+        .password-input-container {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .auth-button {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .auth-button:hover {
+            background: var(--border-color);
+            color: var(--bg-primary);
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .auth-switch a {
+            color: var(--accent-color);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .auth-switch a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid var(--error-color);
+            color: var(--error-color);
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        /* Loading overlay styles */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loader {
+            text-align: center;
+            color: var(--text-primary);
+        }
+
+        .loader-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .loader-content i {
+            font-size: 3rem;
+            color: var(--accent-color);
+        }
+
+        /* Button loader styles */
+        .button-loader {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            margin-left: 8px;
+            animation: button-spin 1s linear infinite;
+        }
+
+        .auth-button.loading .button-loader {
+            display: inline-block;
+        }
+
+        .auth-button.loading span {
+            opacity: 0.7;
+        }
+
+        @keyframes button-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Ghost animation */
+        @keyframes ghost-float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .loader-content i.fa-ghost {
+            animation: ghost-float 2s ease-in-out infinite;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            line-height: 1;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(90deg);
+        }
+
+        .shortcuts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .shortcut {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        kbd {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 0.25rem 0.5rem;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+    </style>
 </head>
 <body>
-    <div class="auth-container">
+    <div class="auth-container" role="main">
         <div class="auth-box">
-            <form id="loginForm">
+            <form id="loginForm" aria-labelledby="loginTitle">
                 <div class="auth-header">
-                    <h1>Ghostx</h1>
+                    <a href="/" class="auth-logo" aria-label="Return to homepage">
+                        <i class="fas fa-ghost"></i>
+                        <h1 id="loginTitle">GhostX</h1>
+                    </a>
                     <p>Login to your account</p>
                 </div>
-                <div class="error-message" id="loginError"></div>
+                
+                <div class="error-message" id="loginError" role="alert" aria-live="polite"></div>
+                
                 <div class="form-group">
                     <label for="loginUsername">Username</label>
-                    <input type="text" id="loginUsername" name="username" required autocomplete="username">
+                    <div class="input-group">
+                        <i class="fas fa-user input-icon" aria-hidden="true"></i>
+                        <input 
+                            type="text" 
+                            id="loginUsername" 
+                            name="username" 
+                            required 
+                            autocomplete="username"
+                            placeholder="Enter your username"
+                            pattern="[a-zA-Z0-9_-]{3,20}">
+                    </div>
                 </div>
+
                 <div class="form-group">
                     <label for="loginPassword">Password</label>
                     <div class="password-input-container">
-                        <input type="password" id="loginPassword" name="password" required autocomplete="current-password">
-                        <button type="button" class="password-toggle" id="passwordToggle">
-                            <i class="fas fa-eye"></i>
+                        <i class="fas fa-lock input-icon" aria-hidden="true"></i>
+                        <input 
+                            type="password" 
+                            id="loginPassword" 
+                            name="password" 
+                            required 
+                            autocomplete="current-password"
+                            placeholder="Enter your password"
+                            minlength="3">
+                        <button 
+                            type="button" 
+                            class="password-toggle" 
+                            id="passwordToggle"
+                            aria-label="Toggle password visibility">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
-                <button type="submit" class="auth-button" id="loginButton">Login</button>
+
+                <div class="auth-actions">
+                    <button 
+                        type="submit" 
+                        class="auth-button" 
+                        id="loginButton">
+                        <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
+                        <span>Login</span>
+                        <div class="button-loader"></div>
+                    </button>
+                </div>
+
                 <div class="auth-switch">
-                    Don't have an account? <a href="{{ url_for('auth.register_page') }}">Register</a>
+                    <span>Don't have an account?</span>
+                    <a href="{{ url_for('auth.register_page') }}" class="register-link">
+                        Register now
+                        <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                    </a>
                 </div>
             </form>
         </div>
     </div>
-    <div id="notifications"></div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" aria-hidden="true">
+        <div class="loader">
+            <div class="loader-content">
+                <i class="fas fa-ghost fa-bounce"></i>
+                <span>Logging in...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Container -->
+    <div id="notifications" role="alert" aria-live="polite"></div>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="modal" id="keyboardShortcuts" aria-labelledby="shortcutsTitle" hidden>
+        <div class="modal-content">
+            <h2 id="shortcutsTitle">Keyboard Shortcuts</h2>
+            <div class="shortcuts-grid">
+                <div class="shortcut">
+                    <kbd>Enter</kbd>
+                    <span>Submit form</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>Tab</kbd>
+                    <span>Navigate fields</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>Shift</kbd> + <kbd>Tab</kbd>
+                    <span>Navigate backwards</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>Alt</kbd> + <kbd>R</kbd>
+                    <span>Go to register</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>Alt</kbd> + <kbd>H</kbd>
+                    <span>Go to home</span>
+                </div>
+                <div class="shortcut">
+                    <kbd>?</kbd>
+                    <span>Show this help</span>
+                </div>
+            </div>
+            <button class="modal-close" aria-label="Close shortcuts help">×</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        window.CSRF_TOKEN = "{{ csrf_token }}";
+        window.APP_CONFIG = {
+            minUsernameLength: 3,
+            maxUsernameLength: 20,
+            minPasswordLength: 3,
+            urls: {
+                login: "{{ url_for('auth.login') }}",
+                register: "{{ url_for('auth.register_page') }}",
+                home: "{{ url_for('main.index') }}",
+                dashboard: "{{ url_for('main.dashboard') }}"
+            }
+        };
+
+        // Modal functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('keyboardShortcuts');
+            const closeBtn = modal.querySelector('.modal-close');
+            
+            // Close modal when clicking the close button
+            closeBtn.addEventListener('click', () => {
+                modal.classList.remove('active');
+            });
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+            
+            // Show modal when pressing '?'
+            document.addEventListener('keydown', (e) => {
+                if (e.key === '?' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                    modal.classList.toggle('active');
+                }
+            });
+
+            // Close modal when pressing Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal.classList.contains('active')) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+    </script>
     <script src="{{ url_for('static', filename='js/utils.js') }}" type="module"></script>
     <script src="{{ url_for('static', filename='js/auth.js') }}" type="module"></script>
 </body>

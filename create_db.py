@@ -1,7 +1,6 @@
 import os
 import sys
 import click
-from flask_migrate import Migrate
 from src import create_app, db
 from src.models import (
     User, UserRole, Session, LoginAttempt, 
@@ -117,12 +116,10 @@ def create_security_tables(db_session):
 
 @click.command()
 @click.option('--remake', is_flag=True, help='Recreate the database from scratch')
-@click.option('--migrate', is_flag=True, help='Run migrations without recreating the database')
-def setup_db(remake, migrate):
+def setup_db(remake):
     """Initialize the database."""
     app = create_app()
     app.app_context().push()
-    migrate = Migrate(app, db)
     
     try:
         if remake:
@@ -146,6 +143,8 @@ def setup_db(remake, migrate):
                 join_date=datetime.now(timezone.utc),
                 email_count=0,
                 daily_email_count=0,
+                last_hourly_reset=datetime.now(timezone.utc),
+                last_daily_reset=datetime.now(timezone.utc),
                 successful_emails=0,
                 failed_emails=0,
                 total_campaigns=0,
@@ -154,15 +153,21 @@ def setup_db(remake, migrate):
                 total_clicks=0,
                 failed_login_attempts=0,
                 email_notifications=True,
-                two_factor_enabled=False
+                two_factor_enabled=False,
+                registration_ip='127.0.0.1',
+                last_login_ip='127.0.0.1',
+                last_login_date=datetime.now(timezone.utc)
             )
             admin.set_password('admin')
             
             # Check if admin user already exists
             existing_admin = User.query.filter_by(username='admin').first()
             if existing_admin:
-                click.echo('Admin user already exists, updating password...')
+                click.echo('Admin user already exists, updating password and admin status...')
                 existing_admin.password_hash = admin.password_hash
+                existing_admin.is_admin = True
+                existing_admin.role = UserRole.ADMIN.value
+                existing_admin.is_active = True
                 db.session.commit()
             else:
                 db.session.add(admin)
@@ -214,31 +219,17 @@ def setup_db(remake, migrate):
             db.session.add(security_log)
             
             db.session.commit()
-            click.echo('Created admin user (username: admin, password: admin)')
+            click.echo('Created/updated admin user (username: admin, password: admin)')
             click.echo('Added default email templates')
             
-        if migrate or not remake:
-            # Initialize migrations
-            migrations_dir = os.path.join(os.path.dirname(__file__), 'migrations')
-            
-            if not os.path.exists(migrations_dir):
-                click.echo('Initializing migrations directory...')
-                with app.app_context():
-                    os.system(f'flask --app {__file__} db init')
-            
-            click.echo('Running database migrations...')
-            with app.app_context():
-                os.system(f'flask --app {__file__} db migrate -m "Initial migration including security tables"')
-                os.system(f'flask --app {__file__} db upgrade')
-            
-            # Create security tables using both methods for reliability
-            click.echo('Ensuring security tables exist...')
-            create_security_tables(db.session)
-            
-            db.session.commit()
-            click.echo('Security tables created/updated successfully')
+        # Create security tables using both methods for reliability
+        click.echo('Ensuring security tables exist...')
+        create_security_tables(db.session)
         
+        db.session.commit()
+        click.echo('Security tables created/updated successfully')
         click.echo('Database setup completed successfully!')
+        
     except Exception as e:
         click.echo(f'Error: {str(e)}')
         sys.exit(1)

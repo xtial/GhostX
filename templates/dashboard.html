@@ -5,12 +5,289 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>Ghostx - Dashboard</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon_io/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon_io/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon_io/favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='favicon_io/site.webmanifest') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/themes/light.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/theme-monokai.min.css">
     <style>
+        /* Dashboard-specific styles */
+        :root {
+            --bg-primary: #0a0f16;
+            --bg-secondary: #1a1f26;
+            --text-primary: #00ff00;
+            --text-secondary: #00cc00;
+            --accent-color: #00ff00;
+            --border-color: #00ff00;
+            --error-color: #ff3333;
+            --card-bg: rgba(26, 31, 38, 0.8);
+            --success-color: #00ff00;
+            --warning-color: #ffa500;
+            --danger-color: #ff3333;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .dashboard-header {
+            text-align: center;
+            padding: 2rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard-header h1 {
+            font-size: 2.5rem;
+            margin: 0;
+            background: linear-gradient(45deg, var(--text-primary), var(--accent-color));
+            -webkit-text-fill-color: transparent;
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        .dashboard-header p {
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(0, 255, 0, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.5s ease;
+        }
+
+        .stat-card:hover::before {
+            transform: translateX(100%);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 255, 0, 0.2);
+        }
+
+        .stat-card i {
+            font-size: 1.8rem;
+            color: var(--accent-color);
+            margin-bottom: 1rem;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-trend {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .trend-icon {
+            color: var(--success-color);
+        }
+
+        .trend-icon.down {
+            color: var(--danger-color);
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 1rem;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background: var(--accent-color);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .progress::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.2), 
+                transparent);
+            animation: progress-shine 2s infinite;
+        }
+
+        .reset-time {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            text-align: right;
+        }
+
+        /* Navigation styles */
+        .nav {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: rgba(0, 255, 0, 0.1);
+            color: var(--text-primary);
+        }
+
+        /* Animations */
+        @keyframes glow {
+            0%, 100% {
+                text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            }
+            50% {
+                text-shadow: 0 0 20px rgba(0, 255, 0, 0.7);
+            }
+        }
+
+        @keyframes progress-shine {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        /* Quick actions */
+        .quick-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+
+        .action-button {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .action-button:hover {
+            background: var(--border-color);
+            color: var(--bg-primary);
+            transform: translateY(-2px);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .nav-links.active {
+                display: flex;
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--bg-secondary);
+                padding: 1rem;
+                border-bottom: 1px solid var(--border-color);
+            }
+        }
+
         /* Dashboard-specific button overrides */
         .template-actions .auth-button {
             min-width: 120px;
@@ -139,15 +416,6 @@
                     <div class="progress" id="successProgress"></div>
                 </div>
             </div>
-            <div class="stat-card" data-tippy-content="Recent notifications">
-                <i class="fas fa-bell"></i>
-                <div class="stat-number" id="notificationCount">0</div>
-                <div class="stat-label">Notifications</div>
-                <div class="stat-trend">
-                    <span class="trend-icon"><i class="fas fa-clock"></i></span>
-                    <span class="trend-value" id="lastNotification">Never</span>
-                </div>
-            </div>
             <div class="stat-card" data-tippy-content="Emails you can send in the current hour">
                 <i class="fas fa-clock"></i>
                 <div class="stat-number" id="hourlyLimit">0</div>
@@ -208,9 +476,6 @@
                 <div class="section-actions">
                     <button class="action-button" id="saveTemplate">
                         <i class="fas fa-save"></i> Save as Template
-                    </button>
-                    <button class="action-button" id="clearForm">
-                        <i class="fas fa-eraser"></i> Clear Form
                     </button>
                 </div>
             </div>

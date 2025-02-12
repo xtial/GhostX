@@ -15,8 +15,12 @@ admin = Blueprint('admin', __name__, url_prefix='/admin')
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin:
-            return redirect(url_for('main.index'))
+        if not current_user.is_authenticated:
+            logger.warning(f"Unauthenticated user attempted to access admin route: {request.path}")
+            return redirect(url_for('auth.login_page'))
+        if not current_user.is_admin:
+            logger.warning(f"Non-admin user {current_user.username} attempted to access admin route: {request.path}")
+            return redirect(url_for('main.dashboard'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -24,12 +28,14 @@ def admin_required(f):
 @login_required
 @admin_required
 def index():
+    logger.debug(f"Admin {current_user.username} accessing admin index")
     return redirect(url_for('admin.dashboard'))
 
 @admin.route('/dashboard')
 @login_required
 @admin_required
 def dashboard():
+    logger.debug(f"Admin {current_user.username} accessing admin dashboard")
     return render_template('admin.html', csrf_token=generate_csrf())
 
 @admin.route('/stats')

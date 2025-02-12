@@ -4,6 +4,7 @@ from flask_wtf.csrf import generate_csrf
 from datetime import datetime, timedelta
 from src.config import MAX_EMAILS_PER_HOUR, MAX_EMAILS_PER_DAY
 from src.models import EmailTemplate
+from src.routes.auth import user_required
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,22 +22,9 @@ def index():
     return render_template('index.html', csrf_token=generate_csrf())
 
 @main.route('/dashboard')
-@login_required
+@user_required
 def dashboard():
-    logger.debug(f"Accessing dashboard route for user {current_user.username}")
-    
-    # Check if user is authenticated (should be true due to @login_required)
-    if not current_user.is_authenticated:
-        logger.warning("User not authenticated in dashboard despite @login_required")
-        return redirect(url_for('auth.login_page'))
-    
-    # Admin users should be redirected to admin dashboard
-    if current_user.is_admin:
-        logger.debug(f"Admin user {current_user.username} redirecting to admin dashboard")
-        return redirect(url_for('admin.dashboard'))
-    
-    # For regular users, render the dashboard template
-    logger.debug(f"Rendering dashboard for regular user {current_user.username}")
+    logger.debug(f"Rendering dashboard for user {current_user.username}")
     return render_template('dashboard.html', csrf_token=generate_csrf())
 
 @main.route('/api/limits')
