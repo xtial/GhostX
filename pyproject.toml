@@ -34,6 +34,7 @@ python-dateutil = "*"
 pytz = "*"
 bcrypt = "*"
 itsdangerous = "*"
+passlib = ">=1.7.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

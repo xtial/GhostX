@@ -32,3 +32,4 @@ urllib3
 certifi
 charset-normalizer
 idna
+passlib>=1.7.4
