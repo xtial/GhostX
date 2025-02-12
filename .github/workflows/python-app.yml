@@ -61,9 +61,9 @@ jobs:
 
     - name: Generate poetry.lock
       run: |
-        if [ ! -f "poetry.lock" ]; then
-          poetry lock --no-update
-        fi
+        poetry lock --no-update
+        # Force update for security fixes
+        poetry update waitress --no-dev
 
     - name: Check for Latest Package Versions
       run: |
