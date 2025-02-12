@@ -574,11 +574,11 @@ def toggle_user_permission():
             }), 500
 
     except Exception as e:
-        logger.error(f"Error in toggle_user_permission: {str(e)}")
+        logger.error(f"Error in toggle_user_permission: {traceback.format_exc()}")
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': str(e)
+            'message': 'An internal error has occurred. Please try again later.'
         }), 500
 
 @admin.route('/api/admin/role/permissions', methods=['POST'])
@@ -617,7 +617,11 @@ def update_role_permissions():
             'message': f'Updated permissions for {role} role'
         })
     except Exception as e:
-        return handle_error(e, 'roles')
+        logger.error(f"Error in update_role_permissions: {traceback.format_exc()}")
+        return jsonify({
+            'success': False,
+            'message': 'An internal error has occurred. Please try again later.'
+        }), 500
 
 @admin.route('/api/role/<role>/permissions', methods=['GET'])
 @login_required
