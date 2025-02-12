@@ -61,8 +61,8 @@ jobs:
 
     - name: Check for Latest Package Versions
       run: |
-        pip install pip-outdated
-        pip-outdated
+        pip install pip-check
+        pip-check
         poetry show --outdated
 
     - name: Install dependencies
@@ -103,6 +103,10 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+
+    - uses: anishathalye/proof-html@v2
+      with:
+        directory: ./site
 
   build:
     needs: test
