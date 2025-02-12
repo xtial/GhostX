@@ -1,39 +1,60 @@
-# Ghostx - Professional Email Management System
+# GhostX - Professional Email Management System
 
-## Overview
-Ghostx is a powerful email management system built with Flask, offering advanced features for email template management, campaign handling, and user administration.
+![GhostX Logo](static/favicon_io/favicon-32x32.png)
 
-## Features
-- 🚀 Advanced Email Template Management
-- 📊 Real-time Analytics Dashboard
-- 👥 User Role Management
-- 🔒 Rate Limiting & Quota Management
-- 📈 Campaign Statistics
-- 🎨 Modern, Responsive UI
+A modern, secure, and feature-rich email management system built with Flask and modern web technologies.
 
-## Tech Stack
-- Backend: Python/Flask
-- Database: SQLAlchemy
-- Frontend: HTML5, CSS3, JavaScript
-- Authentication: Flask-Login
-- Task Processing: Custom Email Worker
-- Rate Limiting: Flask-Limiter
+## 🚀 Features
 
-## Installation
+### 📧 Email Management
+- Custom email template creation and management
+- Real-time email tracking and analytics
+- Hourly and daily sending limits
+- Success rate monitoring
+- Template categorization and filtering
 
-### Prerequisites
-- Python 3.8+
-- pip
-- virtualenv (recommended)
+### 🎨 User Interface
+- Modern, responsive design
+- Dark/Light theme toggle
+- Real-time statistics dashboard
+- Interactive template editor
+- Mobile-friendly interface
 
-### Setup
+### 🔒 Security Features
+- Secure user authentication
+- Session management
+- Rate limiting
+- CSRF protection
+- Password strength validation
+- Secure password hashing
+- IP tracking and monitoring
+
+### 📊 Analytics
+- Email success rates
+- Sending statistics
+- Usage tracking
+- Real-time monitoring
+- Performance metrics
+
+## 🛠️ Technical Stack
+
+- **Backend**: Python/Flask
+- **Database**: SQLAlchemy with SQLite
+- **Frontend**: HTML5, CSS3, JavaScript
+- **Security**: Flask-Login, Flask-WTF
+- **UI Components**: Font Awesome, Tippy.js
+- **Editor**: Ace Editor
+- **Styling**: Custom CSS with CSS Variables
+
+## 📦 Installation
+
 1. Clone the repository:
 ```bash
-git clone https://github.com/GhostRelayX/spoofer.git
+git clone https://github.com/GhostRelayX/ghostx.git
 cd ghostx
 ```
 
-2. Create and activate virtual environment:
+2. Create a virtual environment:
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -44,86 +65,138 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Create environment file:
+4. Initialize the database:
 ```bash
-cp .env.example .env
+python create_db.py --remake
 ```
 
-5. Edit `.env` with your configuration:
-```env
-FLASK_ENV=development
-FLASK_DEBUG=True
-SECRET_KEY=your_secret_key
-DATABASE_URL=sqlite:///spoofer.db
-```
-
-6. Initialize database:
-```bash
-python create_db.py
-```
-
-7. Run the application:
+5. Start the application:
 ```bash
 python run.py
 ```
 
-## Project Structure
-```
-ghostx/
-├── src/
-│   ├── models/
-│   ├── routes/
-│   ├── tasks/
-│   ├── utils/
-│   ├── __init__.py
-│   ├── config.py
-│   └── main.py
-├── static/
-│   ├── css/
-│   ├── js/
-│   └── img/
-├── templates/
-├── tests/
-├── .env
-├── .gitignore
-├── requirements.txt
-└── run.py
+## ⚙️ Configuration
+
+Create a `.env` file in the root directory with the following variables:
+```env
+SECRET_KEY=your_secret_key
+DEBUG=True
+DATABASE_URL=sqlite:///spoofer.db
+MAX_EMAILS_PER_HOUR=10
+MAX_EMAILS_PER_DAY=50
 ```
 
-## Configuration
-The application can be configured using environment variables in the `.env` file:
-- `FLASK_ENV`: development/production
-- `FLASK_DEBUG`: True/False
-- `SECRET_KEY`: Application secret key
-- `DATABASE_URL`: Database connection string
-- `SMTP_*`: SMTP server configuration
-- `MAX_EMAILS_*`: Rate limiting configuration
+## 🔧 Usage
 
-## Development
+### User Dashboard
+- View email statistics
+- Monitor sending limits
+- Access email templates
+- Create custom emails
+- Track success rates
+
+### Template Management
+- Browse pre-built templates
+- Create custom templates
+- Save favorite templates
+- Filter by categories
+- Search functionality
+
+### Account Management
+- Update profile settings
+- Monitor account activity
+- View usage statistics
+- Track email history
+
+## 🔐 Security Recommendations
+
+1. Always use strong passwords
+2. Enable two-factor authentication when available
+3. Monitor account activity regularly
+4. Keep the application and dependencies updated
+5. Review security logs periodically
+
+## 📱 Mobile Support
+
+The application is fully responsive and supports:
+- Mobile phones
+- Tablets
+- Desktop browsers
+
+## 🌐 Browser Support
+
+- Chrome (recommended)
+- Firefox
+- Safari
+- Edge
+- Opera
+
+## 🛡️ Rate Limiting
+
+- Hourly email sending limits
+- Daily email sending limits
+- API rate limiting
+- Login attempt limiting
+
+## 🔄 Updates
+
+The application checks for updates automatically. To manually update:
+
+1. Pull the latest changes:
+```bash
+git pull origin main
+```
+
+2. Update dependencies:
+```bash
+pip install -r requirements.txt --upgrade
+```
+
+3. Update database:
+```bash
+python create_db.py
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## ⚠️ Disclaimer
+
+This tool is for educational purposes only. Users are responsible for complying with applicable laws and regulations.
+
+## 🤝 Contributing
+
 1. Fork the repository
 2. Create a feature branch
 3. Commit your changes
 4. Push to the branch
 5. Create a Pull Request
 
-## Testing
-Run tests using:
-```bash
-python -m pytest
-```
+## 🐛 Bug Reports
 
-## Security
-- CSRF Protection enabled
-- Rate limiting implemented
-- Password hashing using werkzeug
-- Session management with Flask-Login
-- Input validation and sanitization
+Report bugs through the GitHub issues page. Include:
+- Browser and version
+- Operating system
+- Steps to reproduce
+- Expected vs actual behavior
+- Screenshots if applicable
 
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 📚 Documentation
 
-## Support
-For support, please open an issue in the GitHub repository or contact the maintainers.
+Additional documentation available in the `/docs` folder:
+- API Documentation
+- Security Guidelines
+- Development Guide
+- Deployment Guide
 
-## Contributing
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests. 
+## 🙏 Acknowledgments
+
+- Font Awesome for icons
+- Ace Editor for the code editor
+- Flask community for the framework
+- All contributors and testers
+
+---
+
+Made with ❤️ by the GhostX Team 

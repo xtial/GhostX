@@ -6,7 +6,7 @@ Flask-WTF==1.2.1
 Flask-Migrate==4.0.5
 Flask-Limiter
 SQLAlchemy==2.0.27
-Werkzeug==3.0.1
+Werkzeug>=3.0.6
 Jinja2
 python-dotenv
 waitress>=3.0.1
@@ -14,7 +14,7 @@ beautifulsoup4
 gunicorn
 email-validator
 cryptography
-requests==2.31.0
+requests>=2.32.0
 pytest
 black
 flake8
