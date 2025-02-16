@@ -1,5 +1,5 @@
 from datetime import datetime
-from src import db
+from src.database import db
 from enum import Enum
 
 class EventType(Enum):

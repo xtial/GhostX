@@ -1,192 +1,128 @@
 # Contributing to GhostX
 
-Thank you for your interest in contributing to GhostX! This document provides guidelines and instructions for contributing to the project.
+First off, thank you for considering contributing to GhostX! It's people like you that make GhostX such a great tool.
 
 ## Code of Conduct
 
-By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
+This project and everyone participating in it is governed by our Code of Conduct. By participating, you are expected to uphold this code.
 
-## How to Contribute
+## How Can I Contribute?
 
 ### Reporting Bugs
 
-1. **Check Existing Issues** - Search the [issue tracker](https://github.com/xtial/GhostX/issues) to avoid duplicates.
-2. **Create a New Issue** - Use our bug report template when creating new issues.
-3. **Provide Details**:
-   - Clear description of the bug
-   - Steps to reproduce
-   - Expected vs actual behavior
-   - Environment details (OS, browser, etc.)
-   - Screenshots if applicable
+Before creating bug reports, please check the issue list as you might find out that you don't need to create one. When you are creating a bug report, please include as many details as possible:
+
+* Use a clear and descriptive title
+* Describe the exact steps which reproduce the problem
+* Provide specific examples to demonstrate the steps
+* Describe the behavior you observed after following the steps
+* Explain which behavior you expected to see instead and why
+* Include screenshots if possible
+* Include error messages and stack traces
 
 ### Suggesting Enhancements
 
-1. **Check Existing Suggestions** - Review open issues and discussions.
-2. **Create a Feature Request** - Use our feature request template.
-3. **Provide Context**:
-   - Use case and benefits
-   - Potential implementation approach
-   - Considerations and challenges
+Enhancement suggestions are tracked as GitHub issues. When creating an enhancement suggestion, please include:
+
+* A clear and descriptive title
+* A detailed description of the proposed feature
+* Explain why this enhancement would be useful
+* List any alternative solutions you've considered
+* Include mockups if applicable
 
 ### Pull Requests
 
-1. **Fork the Repository**
-2. **Create a Branch**:
+* Fill in the required template
+* Follow the Python style guide (Black formatting)
+* Include appropriate tests
+* Update documentation as needed
+* End all files with a newline
+
+## Development Process
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Set up your development environment:
    ```bash
-   git checkout -b feature/your-feature-name
-   # or
-   git checkout -b fix/your-fix-name
+   poetry install --with dev
+   poetry run pre-commit install
    ```
-
-3. **Make Changes**:
-   - Follow the coding style guide
-   - Add tests for new features
-   - Update documentation as needed
-
-4. **Commit Changes**:
+4. Make your changes
+5. Run tests and linting:
    ```bash
-   git add .
-   git commit -m "type: brief description"
+   poetry run pytest
+   poetry run black .
+   poetry run flake8
+   poetry run mypy .
+   poetry run bandit -r .
    ```
-   Commit types:
-   - feat: New feature
-   - fix: Bug fix
-   - docs: Documentation
-   - style: Formatting
-   - refactor: Code restructuring
-   - test: Adding tests
-   - chore: Maintenance
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
-5. **Push Changes**:
+## Development Environment Setup
+
+1. Install Python 3.13 or higher
+2. Install Poetry:
    ```bash
-   git push origin feature/your-feature-name
+   curl -sSL https://install.python-poetry.org | python3 -
    ```
-
-6. **Create Pull Request**:
-   - Use the pull request template
-   - Link related issues
-   - Provide clear description
-
-## Development Setup
-
-1. **Clone Repository**:
+3. Clone your fork:
    ```bash
-   git clone https://github.com/yourusername/GhostX.git
+   git clone https://github.com/your-username/GhostX.git
    cd GhostX
    ```
-
-2. **Create Virtual Environment**:
+4. Install dependencies:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # Windows: venv\Scripts\activate
+   poetry install --with dev
+   ```
+5. Set up pre-commit hooks:
+   ```bash
+   poetry run pre-commit install
+   ```
+6. Create and configure your `.env` file:
+   ```bash
+   cp .env.template .env
+   # Edit .env with your settings
    ```
 
-3. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Style Guide
 
-4. **Setup Database**:
-   ```bash
-   python create_db.py --remake
-   ```
+* Follow PEP 8 guidelines
+* Use Black for code formatting
+* Use type hints
+* Write descriptive commit messages
+* Document new functions and classes
+* Update tests for new features
 
-5. **Run Tests**:
-   ```bash
-   pytest
-   ```
+## Testing
 
-## Code Style Guide
-
-- Follow PEP 8 guidelines
-- Use meaningful variable and function names
-- Add docstrings to functions and classes
-- Keep functions focused and small
-- Comment complex logic
-- Use type hints where appropriate
-
-## Testing Guidelines
-
-1. **Write Tests For**:
-   - New features
-   - Bug fixes
-   - Edge cases
-   - Error conditions
-
-2. **Test Structure**:
-   - Unit tests in `tests/unit/`
-   - Integration tests in `tests/integration/`
-   - Use descriptive test names
-   - Follow AAA pattern (Arrange, Act, Assert)
-
-3. **Run Tests**:
-   ```bash
-   pytest  # All tests
-   pytest tests/unit/  # Unit tests only
-   pytest -k "test_name"  # Specific test
-   ```
+* Write tests for new features
+* Ensure all tests pass before submitting PR
+* Include both unit and integration tests
+* Test edge cases
+* Update existing tests as needed
 
 ## Documentation
 
-1. **Code Documentation**:
-   - Clear docstrings
-   - Inline comments for complex logic
-   - Type hints for function parameters
+* Update README.md if needed
+* Add docstrings to new functions
+* Update API documentation
+* Include examples for new features
+* Update CHANGELOG.md
 
-2. **Project Documentation**:
-   - README.md updates
-   - API documentation
-   - Configuration guides
-   - Deployment instructions
+## Security
 
-## Security Guidelines
+* Never commit sensitive data
+* Use environment variables for secrets
+* Follow security best practices
+* Report security issues privately
+* Review code for security implications
 
-1. **Security Considerations**:
-   - No hardcoded credentials
-   - Proper input validation
-   - XSS prevention
-   - CSRF protection
-   - Secure session handling
+## Questions?
 
-2. **Reporting Security Issues**:
-   - Do not create public issues
-   - Follow responsible disclosure
-   - Contact maintainers directly
+Feel free to contact the maintainers if you have any questions about contributing.
 
-## Review Process
+## License
 
-1. **Code Review Checklist**:
-   - Follows style guide
-   - Includes tests
-   - Documentation updated
-   - No security issues
-   - Performance considerations
-   - Error handling
-
-2. **Review Timeline**:
-   - Initial review within 48 hours
-   - Address feedback promptly
-   - Final review and merge
-
-## License Compliance
-
-- All contributions must comply with the [LICENSE](LICENSE)
-- Include copyright notices
-- Document third-party code usage
-- Maintain attribution requirements
-
-## Questions and Support
-
-- Use GitHub Discussions for questions
-- Join our community channels
-- Check documentation first
-- Be respectful and patient
-
-## Recognition
-
-Contributors will be:
-- Listed in CONTRIBUTORS.md
-- Mentioned in release notes
-- Credited in documentation
-
-Thank you for contributing to GhostX! 
+By contributing, you agree that your contributions will be licensed under the MIT License. 

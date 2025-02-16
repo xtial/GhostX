@@ -1,7 +1,7 @@
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
-from src import db
+from src.database import db
 from enum import Enum
 from flask import current_app
 

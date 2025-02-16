@@ -5,7 +5,7 @@ from collections import defaultdict
 from ..config import MAX_EMAILS_PER_HOUR, MAX_EMAILS_PER_DAY
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from src import db
+from src.database import db
 from src.models.user import User, UserRole
 
 logger = logging.getLogger(__name__)

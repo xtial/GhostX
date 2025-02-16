@@ -3,7 +3,7 @@ import threading
 import time
 import logging
 from typing import List, Dict, Optional
-from src import db
+from src.database import db
 from src.models import Campaign, EmailTemplate, EmailTracking, User, CampaignStatus
 from src.utils.email_sender import send_email
 from src.utils.rate_limiter import check_rate_limit

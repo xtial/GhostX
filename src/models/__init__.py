@@ -3,7 +3,7 @@ Models package
 """
 
 from flask_login import UserMixin
-from src import db
+from src.database import db
 
 from .user import User, UserRole, Permission, PermissionType
 from .campaign import Campaign, CampaignStatus

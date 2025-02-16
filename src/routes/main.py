@@ -7,7 +7,6 @@ from src.models import EmailTemplate, User
 from src.routes.auth import user_required
 from .. import db, logger
 from ..utils.log_sanitizer import sanitize_user_data, sanitize_log
-from ..utils.security import login_required
 
 main = Blueprint('main', __name__)
 
@@ -23,10 +22,10 @@ def index():
     return render_template('index.html', csrf_token=generate_csrf())
 
 @main.route('/dashboard')
-@user_required
+@login_required
 def dashboard():
     try:
-        user_id = sanitize_user_data(str(request.user_id))
+        user_id = sanitize_user_data(str(current_user.id))
         logger.info(f"User {user_id} accessed dashboard")
         return render_template('dashboard.html', csrf_token=generate_csrf())
     except Exception as e:
@@ -68,8 +67,8 @@ def get_limits():
 @login_required
 def get_templates():
     try:
-        user_id = sanitize_user_data(str(request.user_id))
-        templates = EmailTemplate.query.filter_by(user_id=request.user_id).all()
+        user_id = sanitize_user_data(str(current_user.id))
+        templates = EmailTemplate.query.filter_by(user_id=current_user.id).all()
         logger.info(f"User {user_id} retrieved their email templates. Count: {len(templates)}")
         return jsonify({
             'success': True,
@@ -118,8 +117,8 @@ def get_template(template_id):
 @login_required
 def get_profile():
     try:
-        user_id = sanitize_user_data(str(request.user_id))
-        user = User.query.get_or_404(request.user_id)
+        user_id = sanitize_user_data(str(current_user.id))
+        user = User.query.get_or_404(current_user.id)
         logger.info(f"User {user_id} accessed their profile")
         return jsonify(user.to_dict())
     except Exception as e:

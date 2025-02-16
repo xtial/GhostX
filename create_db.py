@@ -1,11 +1,16 @@
 import os
 import sys
 import click
-from src import create_app, db
-from src.models import (
-    User, UserRole, Session, LoginAttempt, 
-    APIRequest, SecurityLog, EmailTemplate, Permission
-)
+try:
+    from src import create_app, db
+    from src.models import (
+        User, UserRole, Session, LoginAttempt, 
+        APIRequest, SecurityLog, EmailTemplate, Permission
+    )
+except ModuleNotFoundError as e:
+    print(f"Error: Missing required module - {str(e)}")
+    print("Please run: pip install -r requirements.txt")
+    sys.exit(1)
 from datetime import datetime, timezone
 import sqlalchemy as sa
 from sqlalchemy import inspect

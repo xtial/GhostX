@@ -2,7 +2,6 @@
 
 from flask import Flask
 from flask_login import LoginManager
-from flask_sqlalchemy import SQLAlchemy
 from flask_session import Session
 from flask_wtf.csrf import CSRFProtect
 from datetime import timedelta
@@ -10,9 +9,9 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 from .utils.log_sanitizer import create_safe_logger
+from .database import db
 
 # Initialize Flask extensions
-db = SQLAlchemy()
 login_manager = LoginManager()
 csrf = CSRFProtect()
 session = Session()

@@ -1,15 +1,31 @@
 // Notification System
 export function showNotification(message, type = 'info') {
+    const notifications = document.getElementById('notifications');
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
-    notification.textContent = message;
+    notification.innerHTML = `
+        <i class="fas ${getNotificationIcon(type)}"></i>
+        <span>${message}</span>
+    `;
     
-    const container = document.getElementById('notifications');
-    container.appendChild(notification);
+    notifications.appendChild(notification);
     
+    // Auto remove after 5 seconds
     setTimeout(() => {
-        notification.remove();
-    }, 3000);
+        notification.classList.add('fade-out');
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}
+
+// Helper function to get notification icon
+function getNotificationIcon(type) {
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-times-circle',
+        warning: 'fa-exclamation-circle',
+        info: 'fa-info-circle'
+    };
+    return icons[type] || icons.info;
 }
 
 // Form Validation
@@ -58,20 +74,27 @@ export function initDarkMode() {
 }
 
 // API Helpers
-export async function apiRequest(url, options = {}) {
+export async function apiRequest(endpoint, options = {}) {
+    const defaultOptions = {
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        },
+        credentials: 'same-origin'
+    };
+
     try {
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-        
+        const response = await fetch(endpoint, { ...defaultOptions, ...options });
         const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'API request failed');
+        }
+        
         return data;
     } catch (error) {
-        console.error('API Request failed:', error);
+        console.error('API Request Error:', error);
+        showNotification(error.message, 'error');
         throw error;
     }
 }

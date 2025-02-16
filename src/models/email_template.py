@@ -1,5 +1,5 @@
 from datetime import datetime
-from src import db
+from src.database import db
 from bs4 import BeautifulSoup
 import re
 from typing import List, Dict

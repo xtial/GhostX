@@ -66,126 +66,63 @@ function createElementFromTemplate(templateId) {
 // Load users with role management
 async function loadUsers() {
     try {
-        loadingIndicator.show();
-        
-        const response = await fetch('/api/admin/users', fetchOptions('GET'));
-        const data = await response.json();
-        
-        if (data.success) {
-            const userList = document.getElementById('userList');
-            const userRolesList = document.getElementById('userRolesList');
-            userList.innerHTML = '';
-            userRolesList.innerHTML = '';
-            
-            for (const user of data.users) {
-                const userCard = createElementFromTemplate('userListTemplate');
-                
-                // Apply terminal effect to username
-                const usernameElement = userCard.querySelector('.username');
-                await terminalEffects.glitchText(usernameElement, user.username || 'Unknown User');
-                
-                // Enhanced user card setup
-                userCard.id = `user_${user.id}`;
-                userCard.classList.toggle('admin-user', user.is_admin);
-                
-                userCard.querySelector('.user-role').textContent = formatPermissionName(user.role);
-                userCard.querySelector('.join-date').textContent = `Joined: ${user.join_date ? new Date(user.join_date).toLocaleDateString() : 'Unknown'}`;
-                
-                // Add hover effects
-                userCard.addEventListener('mouseenter', () => {
-                    uiEffects.scanEffect(userCard);
-                });
-                
-                // Setup enhanced role select
-                const roleSelect = userCard.querySelector('.role-select');
-                if (roleSelect) {
-                    roleSelect.dataset.userId = user.id;
-                    if (user.role) {
-                        roleSelect.value = user.role;
-                    }
-                    roleSelect.addEventListener('change', async (e) => {
-                        if (await userExperience.confirmAction('Are you sure you want to change this user\'s role?')) {
-                            updateUserRole(user.id, e.target.value);
-                        } else {
-                            e.target.value = user.role; // Revert if cancelled
-                        }
-                    });
-                }
-                
-                // Setup enhanced status toggle
-                const statusBtn = userCard.querySelector('.status-toggle');
-                if (statusBtn) {
-                    statusBtn.classList.add(user.is_active ? 'warning' : 'success');
-                    statusBtn.textContent = user.is_active ? 'Deactivate' : 'Activate';
-                    statusBtn.addEventListener('click', async () => {
-                        if (await userExperience.confirmAction(`Are you sure you want to ${user.is_active ? 'deactivate' : 'activate'} this user?`)) {
-                            toggleUserStatus(user.id, !user.is_active);
-                        }
-                    });
-                }
-                
-                // Setup enhanced delete button
-                const deleteBtn = userCard.querySelector('.delete-user');
-                if (deleteBtn) {
-                    deleteBtn.addEventListener('click', async () => {
-                        if (await userExperience.confirmAction('Are you sure you want to delete this user? This action cannot be undone.')) {
-                            deleteUser(user.id);
-                        }
-                    });
-                }
-                
-                // Setup permissions container
-                const permissionsContainer = userCard.querySelector('.user-permissions');
-                if (permissionsContainer) {
-                    permissionsContainer.id = `permissions_${user.id}`;
-                    permissionsContainer.dataset.userId = user.id;
-                }
-                
-                userList.appendChild(userCard);
+        const userList = document.getElementById('userList');
+        if (!userList) {
+            console.warn('User list container not found, skipping user load');
+            return;
+        }
 
-                // Create role management card
-                const roleCard = createElementFromTemplate('userRoleTemplate');
-                
-                // Fill in role card information
-                const usernameEl = roleCard.querySelector('.username');
-                const roleStatusEl = roleCard.querySelector('.role-status');
-                
-                if (usernameEl) {
-                    usernameEl.textContent = user.username || 'Unknown User';
-                }
-                if (roleStatusEl) {
-                    roleStatusEl.textContent = `Current Role: ${formatPermissionName(user.role)}`;
-                }
-                
-                // Setup role select
-                const roleManageSelect = roleCard.querySelector('.role-select');
-                if (roleManageSelect) {
-                    roleManageSelect.dataset.userId = user.id;
-                    if (user.role) {
-                        roleManageSelect.value = user.role;
-                    }
-                    roleManageSelect.addEventListener('change', (e) => updateUserRole(user.id, e.target.value));
-                }
-                
-                // Setup permissions container
-                const rolePermissions = roleCard.querySelector('.user-permissions');
-                if (rolePermissions) {
-                    rolePermissions.id = `permissions_${user.id}`;
-                    rolePermissions.dataset.userId = user.id;
-                }
-                
-                userRolesList.appendChild(roleCard);
-                
-                // Load permissions for both containers
-                await loadUserPermissions(user.id);
+        // Show loading state
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading';
+        loadingDiv.textContent = 'Loading users...';
+        userList.appendChild(loadingDiv);
+
+        const response = await fetch('/api/admin/users', fetchOptions('GET'));
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        // Clear loading state
+        while (userList.firstChild) {
+            userList.removeChild(userList.firstChild);
+        }
+
+        if (data.success && Array.isArray(data.users)) {
+            if (data.users.length === 0) {
+                const noDataDiv = document.createElement('div');
+                noDataDiv.className = 'no-data';
+                noDataDiv.textContent = 'No users found';
+                userList.appendChild(noDataDiv);
+                return;
             }
-            
-            notifications.show(`Loaded ${data.users.length} users successfully`, 'success');
+
+            data.users.forEach(user => {
+                const userCard = createUserCard(user);
+                if (userCard) {
+                    userList.appendChild(userCard);
+                }
+            });
+        } else {
+            throw new Error(data.message || 'Failed to load users');
         }
     } catch (error) {
-        await errorHandler.handle(error, 'Loading Users');
-    } finally {
-        loadingIndicator.hide();
+        console.error('Error loading users:', error);
+        const userList = document.getElementById('userList');
+        if (userList) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.innerHTML = `
+                <i class="fas fa-exclamation-circle"></i>
+                Failed to load users: ${error.message}
+            `;
+            while (userList.firstChild) {
+                userList.removeChild(userList.firstChild);
+            }
+            userList.appendChild(errorDiv);
+        }
+        showNotification('Failed to load users: ' + error.message, 'error');
     }
 }
 
@@ -669,115 +606,192 @@ function getTemplateDescription(filename) {
 // Use template
 async function useTemplate(templateFilename) {
     try {
-        const response = await fetch(`/static/templates/${templateFilename}`);
-        if (!response.ok) throw new Error('Failed to load template');
+        const response = await fetch(`/api/admin/templates/${templateFilename}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+            },
+            credentials: 'same-origin'
+        });
         
-        const templateContent = await response.text();
+        const data = await response.json();
         
-        // Set default values based on template type
-        let senderName = 'Support Team';
-        let senderEmail = 'sender@localhost';
-        let subject = 'Important Notice';
-        
-        if (templateFilename.includes('coinbase')) {
-            senderName = 'Coinbase Support';
-            senderEmail = 'support@coinbase.com';
-            subject = 'Important: Action Required for Your Coinbase Account';
-        } else if (templateFilename.includes('gmail')) {
-            senderName = 'Google Account Team';
-            senderEmail = 'no-reply@google.com';
-            subject = 'Security Alert: Action Required';
-        } else if (templateFilename.includes('kraken')) {
-            senderName = 'Kraken Support';
-            senderEmail = 'support@kraken.com';
-            subject = 'Important: Verify Your Kraken Account';
-        } else if (templateFilename.includes('trezor')) {
-            senderName = 'Trezor Team';
-            senderEmail = 'support@trezor.io';
-            subject = 'Important: Trezor Wallet Security Update';
+        if (data.success) {
+            // Set template content
+            const editor = ace.edit('htmlContent');
+            editor.setValue(data.template.html_content);
+            editor.clearSelection();
+            
+            // Update form fields
+            document.getElementById('emailSubject').value = data.template.subject || '';
+            document.getElementById('recipientEmail').value = '';
+            
+            // Set default sender info based on template type
+            let senderName = 'Support Team';
+            let senderEmail = 'support@example.com';
+            
+            if (templateFilename.includes('coinbase')) {
+                senderName = 'Coinbase Support';
+                senderEmail = 'support@coinbase.com';
+            } else if (templateFilename.includes('gmail')) {
+                senderName = 'Google Account Team';
+                senderEmail = 'no-reply@google.com';
+            } else if (templateFilename.includes('kraken')) {
+                senderName = 'Kraken Support';
+                senderEmail = 'support@kraken.com';
+            } else if (templateFilename.includes('trezor')) {
+                senderName = 'Trezor Team';
+                senderEmail = 'support@trezor.io';
+            }
+            
+            document.getElementById('senderName').value = senderName;
+            document.getElementById('senderEmail').value = senderEmail;
+            
+            // Scroll to custom email section
+            document.getElementById('custom-email').scrollIntoView({ behavior: 'smooth' });
+            showNotification('Template loaded successfully', 'success');
+        } else {
+            throw new Error(data.message);
         }
-        
-        document.getElementById('senderName').value = senderName;
-        document.getElementById('senderEmail').value = senderEmail;
-        document.getElementById('emailSubject').value = subject;
-        document.getElementById('htmlContent').value = templateContent;
-        showNotification('Template loaded successfully', 'success');
-        
     } catch (error) {
         console.error('Error loading template:', error);
-        showNotification('Failed to load template', 'error');
+        showNotification(error.message || 'Failed to load template', 'error');
     }
 }
 
 // Preview template
 async function previewTemplate(templateFilename) {
     try {
-        const response = await fetch(`/static/templates/${templateFilename}`);
-        if (!response.ok) throw new Error('Failed to load template');
+        const response = await fetch(`/api/admin/templates/${templateFilename}/preview`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+            },
+            credentials: 'same-origin'
+        });
         
-        const templateContent = await response.text();
+        const data = await response.json();
         
-        // Create a modal to show the preview
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Template Preview</h2>
-                    <button class="close-button" onclick="this.closest('.modal').remove()">&times;</button>
+        if (data.success) {
+            // Create modal for preview
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Template Preview</h3>
+                        <button class="close-button">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <iframe srcdoc="${data.html.replace(/"/g, '&quot;')}" 
+                                style="width: 100%; height: 500px; border: none;"></iframe>
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <iframe srcdoc="${templateContent.replace(/"/g, '&quot;')}" 
-                            style="width: 100%; height: 500px; border: 1px solid #ccc;"></iframe>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Add close functionality
+            const closeButton = modal.querySelector('.close-button');
+            closeButton.onclick = () => modal.remove();
+            
+            // Close on outside click
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+        } else {
+            throw new Error(data.message);
+        }
     } catch (error) {
         console.error('Error previewing template:', error);
-        showNotification('Failed to preview template', 'error');
+        showNotification(error.message || 'Failed to load template preview', 'error');
     }
 }
 
 // Initialize charts
 function initCharts() {
-    // Emails chart
-    const emailsCtx = document.getElementById('emailsChart').getContext('2d');
-    window.emailsChart = new Chart(emailsCtx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'Emails Sent',
-                data: [],
-                borderColor: '#e74c3c',
-                tension: 0.1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
+    try {
+        // Destroy existing chart instances if they exist
+        if (window.activityChart && typeof window.activityChart.destroy === 'function') {
+            window.activityChart.destroy();
+            window.activityChart = null;
         }
-    });
-    
-    // Users chart
-    const usersCtx = document.getElementById('usersChart').getContext('2d');
-    window.usersChart = new Chart(usersCtx, {
-        type: 'bar',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'New Users',
-                data: [],
-                backgroundColor: '#3498db'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
+
+        const activityCtx = document.getElementById('activityChart')?.getContext('2d');
+        if (activityCtx) {
+            window.activityChart = new Chart(activityCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'System Activity',
+                        data: [],
+                        borderColor: '#10b981',
+                        tension: 0.4,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e2e8f0'
+                            }
+                        }
+                    }
+                }
+            });
         }
-    });
+    } catch (error) {
+        console.error('Error initializing charts:', error);
+        showNotification('Failed to initialize charts', 'error');
+    }
+}
+
+// Update all charts with new data
+async function updateCharts() {
+    try {
+        const response = await fetch('/api/admin/stats/charts', fetchOptions('GET'));
+        const data = await response.json();
+        
+        if (data.success) {
+            if (window.activityChart) {
+                window.activityChart.data.labels = data.activity.labels;
+                window.activityChart.data.datasets[0].data = data.activity.values;
+                window.activityChart.update();
+            }
+            
+            showNotification('Charts updated successfully', 'success');
+        } else {
+            throw new Error(data.message || 'Failed to update charts');
+        }
+    } catch (error) {
+        console.error('Error updating charts:', error);
+        showNotification(error.message || 'Failed to update charts', 'error');
+    }
 }
 
 // Update charts with new data
@@ -1464,62 +1478,110 @@ async function updateRolePermission(role, permission, enabled) {
             checkbox.checked = !enabled;
         }
     }
-} 
+}
 
 // Security Monitoring Functions
 function initializeSecurityMonitoring() {
-    // Initialize Chart.js for metrics
-    const ctx = document.getElementById('securityMetricsChart').getContext('2d');
-    window.securityChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'Login Attempts',
-                borderColor: '#e74c3c',
-                data: []
-            }, {
-                label: 'API Requests',
-                borderColor: '#2ecc71',
-                data: []
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
+    try {
+        // Destroy existing chart instances if they exist
+        if (window.loginAttemptsChart && typeof window.loginAttemptsChart.destroy === 'function') {
+            window.loginAttemptsChart.destroy();
+            window.loginAttemptsChart = null;
+        }
+        if (window.apiRequestsChart && typeof window.apiRequestsChart.destroy === 'function') {
+            window.apiRequestsChart.destroy();
+            window.apiRequestsChart = null;
+        }
+        if (window.securityMetricsChart && typeof window.securityMetricsChart.destroy === 'function') {
+            window.securityMetricsChart.destroy();
+            window.securityMetricsChart = null;
+        }
+
+        // Get the canvas element and check if it exists
+        const securityMetricsCanvas = document.getElementById('securityMetricsChart');
+        if (!securityMetricsCanvas) {
+            console.error('Security metrics canvas not found');
+            return;
+        }
+
+        // Get the context and check if it's valid
+        const ctx = securityMetricsCanvas.getContext('2d');
+        if (!ctx) {
+            console.error('Could not get canvas context');
+            return;
+        }
+
+        // Create new chart instance
+        window.securityMetricsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Login Attempts',
+                        data: [],
+                        borderColor: '#10b981',
+                        tension: 0.4,
+                        fill: false
+                    },
+                    {
+                        label: 'API Requests',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        tension: 0.4,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#94a3b8'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#94a3b8'
+                        }
                     }
                 },
-                x: {
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    labels: {
-                        color: '#ffffff'
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#e2e8f0'
+                        }
                     }
                 }
             }
-        }
-    });
+        });
 
-    // Start real-time updates
-    updateSecurityStatus();
-    loadActiveSessions();
-    setInterval(updateSecurityStatus, 30000); // Update every 30 seconds
-    setInterval(updateMetrics, 5000); // Update metrics every 5 seconds
+        // Start monitoring updates
+        updateSecurityStatus();
+        loadActiveSessions();
+        
+        // Set up periodic updates
+        setInterval(updateSecurityStatus, 30000); // Update every 30 seconds
+        setInterval(updateMetrics, 5000); // Update metrics every 5 seconds
+        
+    } catch (error) {
+        console.error('Error initializing security monitoring:', error);
+        showNotification('Failed to initialize security monitoring', 'error');
+    }
 }
 
 async function updateSecurityStatus() {
     try {
-        const response = await fetchOptions('GET')('/api/admin/system-status');
+        const response = await fetch('/api/admin/system-status', fetchOptions('GET'));
         const data = await response.json();
         
         if (data.success) {
@@ -1592,7 +1654,7 @@ function getStatusColor(status) {
 
 async function loadActiveSessions() {
     try {
-        const response = await fetchOptions('GET')('/api/admin/active-sessions');
+        const response = await fetch('/api/admin/active-sessions', fetchOptions('GET'));
         const data = await response.json();
         
         if (data.success) {
@@ -1636,7 +1698,7 @@ async function loadActiveSessions() {
 
 async function updateMetrics() {
     try {
-        const response = await fetchOptions('GET')('/api/admin/security-metrics');
+        const response = await fetch('/api/admin/security-metrics', fetchOptions('GET'));
         const data = await response.json();
         
         if (data.success) {
@@ -1659,17 +1721,22 @@ async function updateMetrics() {
 }
 
 function updateLoginAttemptsChart(labels, data) {
+    const MAX_DATA_POINTS = 12; // Show only last 12 data points
     const ctx = document.getElementById('loginAttemptsChart');
     if (!ctx) return;
     
-    if (!window.loginChart) {
-        window.loginChart = new Chart(ctx, {
+    // Limit data points
+    const limitedLabels = labels.slice(-MAX_DATA_POINTS);
+    const limitedData = data.slice(-MAX_DATA_POINTS);
+    
+    if (!window.loginAttemptsChart) {
+        window.loginAttemptsChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: labels,
+                labels: limitedLabels,
                 datasets: [{
                     label: 'Login Attempts',
-                    data: data,
+                    data: limitedData,
                     borderColor: '#007bff',
                     tension: 0.4,
                     fill: true
@@ -1689,24 +1756,29 @@ function updateLoginAttemptsChart(labels, data) {
             }
         });
     } else {
-        window.loginChart.data.labels = labels;
-        window.loginChart.data.datasets[0].data = data;
-        window.loginChart.update();
+        window.loginAttemptsChart.data.labels = limitedLabels;
+        window.loginAttemptsChart.data.datasets[0].data = limitedData;
+        window.loginAttemptsChart.update('none'); // Use 'none' mode for smoother updates
     }
 }
 
 function updateAPIRequestsChart(labels, data) {
+    const MAX_DATA_POINTS = 12; // Show only last 12 data points
     const ctx = document.getElementById('apiRequestsChart');
     if (!ctx) return;
     
-    if (!window.apiChart) {
-        window.apiChart = new Chart(ctx, {
+    // Limit data points
+    const limitedLabels = labels.slice(-MAX_DATA_POINTS);
+    const limitedData = data.slice(-MAX_DATA_POINTS);
+    
+    if (!window.apiRequestsChart) {
+        window.apiRequestsChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: labels,
+                labels: limitedLabels,
                 datasets: [{
                     label: 'API Requests',
-                    data: data,
+                    data: limitedData,
                     borderColor: '#28a745',
                     tension: 0.4,
                     fill: true
@@ -1726,9 +1798,9 @@ function updateAPIRequestsChart(labels, data) {
             }
         });
     } else {
-        window.apiChart.data.labels = labels;
-        window.apiChart.data.datasets[0].data = data;
-        window.apiChart.update();
+        window.apiRequestsChart.data.labels = limitedLabels;
+        window.apiRequestsChart.data.datasets[0].data = limitedData;
+        window.apiRequestsChart.update('none'); // Use 'none' mode for smoother updates
     }
 }
 
@@ -1815,23 +1887,31 @@ async function terminateSession(sessionId) {
 }
 
 async function terminateAllSessions() {
+    if (!confirm('Are you sure you want to terminate all user sessions? This will log out all users except you.')) {
+        return;
+    }
+    
     try {
-        if (!await userExperience.confirmAction('Are you sure you want to terminate all sessions? This will log out all users.')) {
-            return;
-        }
-
-        const response = await fetch('/api/admin/terminate-all-sessions', fetchOptions('POST'));
+        const response = await fetch('/api/admin/terminate-all-sessions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+            },
+            credentials: 'same-origin'
+        });
+        
         const data = await response.json();
         
         if (data.success) {
             showNotification('All sessions terminated successfully', 'success');
             loadActiveSessions();
         } else {
-            throw new Error(data.message || 'Failed to terminate all sessions');
+            throw new Error(data.message);
         }
     } catch (error) {
-        console.error('Error terminating all sessions:', error);
-        showNotification(error.message || 'Failed to terminate all sessions', 'error');
+        console.error('Error terminating sessions:', error);
+        showNotification(error.message || 'Failed to terminate sessions', 'error');
     }
 }
 
@@ -1871,4 +1951,154 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('security')) {
         initializeSecurityMonitoring();
     }
-}); 
+});
+
+// Export functions to global scope for HTML onclick handlers
+window.refreshSecurityStatus = async function() {
+    try {
+        await updateSecurityStatus();
+        showNotification('Security status refreshed', 'success');
+    } catch (error) {
+        showNotification('Failed to refresh security status', 'error');
+    }
+};
+
+window.terminateAllSessions = async function() {
+    if (!confirm('Are you sure you want to terminate all active sessions?')) {
+        return;
+    }
+    try {
+        const response = await fetch('/api/admin/sessions/terminate-all', fetchOptions('POST'));
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('All sessions terminated', 'success');
+            await loadActiveSessions();
+        } else {
+            throw new Error(data.message || 'Failed to terminate sessions');
+        }
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+};
+
+window.exportSecurityLogs = async function() {
+    try {
+        const response = await fetch('/api/admin/security/logs/export', fetchOptions('GET'));
+        const blob = await response.blob();
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `security_logs_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showNotification('Security logs exported successfully', 'success');
+    } catch (error) {
+        showNotification('Failed to export security logs', 'error');
+    }
+};
+
+// Initialize everything when the DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    initNavigation();
+    loadStats();
+    loadUsers();
+    loadTemplates();
+    initCharts();
+    initTheme();
+    initializeSecurityMonitoring();
+    
+    // Add event listeners for forms
+    const settingsForm = document.getElementById('settingsForm');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', saveSettings);
+    }
+    
+    const customEmailForm = document.getElementById('customEmailForm');
+    if (customEmailForm) {
+        customEmailForm.addEventListener('submit', handleCustomEmail);
+    }
+    
+    // Add event listener for logout
+    const logoutButton = document.getElementById('logoutButton');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', handleLogout);
+    }
+    
+    // Add event listener for theme toggle
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+        });
+    }
+});
+
+// Function to create a user card
+function createUserCard(user) {
+    try {
+        if (!user || !user.id) {
+            console.error('Invalid user data provided to createUserCard');
+            return null;
+        }
+
+        const card = document.createElement('div');
+        card.className = `user-role-card ${user.is_admin ? 'admin-user' : ''}`;
+        card.id = `user_${user.id}`;
+
+        // Sanitize user data
+        const safeUsername = security.escapeHTML(user.username);
+        const safeEmail = security.escapeHTML(user.email);
+        const safeJoinDate = security.escapeHTML(new Date(user.join_date).toLocaleDateString());
+        const safeEmailCount = parseInt(user.email_count) || 0;
+
+        card.innerHTML = `
+            <div class="user-role-info">
+                <h3>${safeUsername}</h3>
+                <p>Role: <span class="role-text">${user.role || 'User'}</span></p>
+                <p>Email: ${safeEmail}</p>
+                <p>Joined: ${safeJoinDate}</p>
+                <p>Emails Sent: ${safeEmailCount}</p>
+            </div>
+            <div class="user-role-actions">
+                <select class="role-select" data-user-id="${user.id}">
+                    <option value="USER" ${user.role === 'USER' ? 'selected' : ''}>User</option>
+                    <option value="ADMIN" ${user.role === 'ADMIN' ? 'selected' : ''}>Admin</option>
+                    <option value="MODERATOR" ${user.role === 'MODERATOR' ? 'selected' : ''}>Moderator</option>
+                </select>
+                <button class="auth-button ${user.active ? 'warning' : 'success'}" 
+                        onclick="toggleUserStatus(${user.id}, ${!user.active})">
+                    ${user.active ? 'Disable' : 'Enable'}
+                </button>
+                <button class="auth-button danger" onclick="deleteUser(${user.id})">
+                    Delete
+                </button>
+            </div>
+            <div class="permissions-container" id="permissions_${user.id}" data-user-id="${user.id}">
+                <!-- Permissions will be loaded dynamically -->
+            </div>
+        `;
+
+        // Add event listener for role changes
+        const roleSelect = card.querySelector('.role-select');
+        if (roleSelect) {
+            roleSelect.addEventListener('change', (e) => {
+                updateUserRole(user.id, e.target.value);
+            });
+        }
+
+        // Load permissions for this user
+        loadUserPermissions(user.id);
+
+        return card;
+    } catch (error) {
+        console.error('Error creating user card:', error);
+        showNotification('Failed to create user card', 'error');
+        return null;
+    }
+} 

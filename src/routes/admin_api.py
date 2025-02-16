@@ -1,11 +1,14 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import func, text
-from src.models import db, User, Session, LoginAttempt, APIRequest, SecurityLog
+from src.models import db, User, Session, LoginAttempt, APIRequest, SecurityLog, EmailTemplate
 from src.utils.decorators import admin_required
 from src.utils.security import check_system_status
+from src.utils.log_sanitizer import sanitize_log
 import logging
+import csv
+import io
 
 logger = logging.getLogger(__name__)
 admin_api = Blueprint('admin_api', __name__)
@@ -204,44 +207,129 @@ def terminate_all_sessions():
             'message': 'All sessions terminated successfully'
         })
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Error terminating all sessions: {str(e)}")
         return jsonify({
             'success': False,
-            'message': 'Failed to terminate all sessions'
+            'message': 'Failed to terminate sessions'
         }), 500
 
-@admin_api.route('/security-logs')
+@admin_api.route('/security/logs/export')
 @login_required
-@admin_required
 def export_security_logs():
-    """Export security logs"""
     try:
-        # Get all logs from the last 7 days
-        cutoff = datetime.utcnow() - timedelta(days=7)
-        logs = SecurityLog.query.filter(
-            SecurityLog.timestamp >= cutoff
-        ).order_by(SecurityLog.timestamp.desc()).all()
+        # Create CSV in memory
+        output = io.StringIO()
+        writer = csv.writer(output)
         
-        # Format logs for export
-        log_text = "Security Logs Export\n"
-        log_text += "=" * 50 + "\n\n"
+        # Write headers
+        writer.writerow(['Timestamp', 'Event Type', 'User', 'IP Address', 'Details'])
         
+        # Get logs from database
+        logs = SecurityLog.query.order_by(SecurityLog.timestamp.desc()).all()
+        
+        # Write log entries
         for log in logs:
-            log_text += f"[{log.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] "
-            log_text += f"[{log.severity.upper()}] "
-            log_text += f"{log.title}\n"
-            log_text += f"Message: {log.message}\n"
-            if log.user_id:
-                log_text += f"User: {log.user.username}\n"
-            log_text += "-" * 50 + "\n"
+            writer.writerow([
+                log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                log.event_type,
+                log.user_id,
+                log.ip_address,
+                log.details
+            ])
         
-        return log_text, 200, {
-            'Content-Type': 'text/plain',
-            'Content-Disposition': f'attachment; filename=security-logs-{datetime.utcnow().strftime("%Y-%m-%d")}.txt'
-        }
+        # Prepare the CSV file
+        output.seek(0)
+        return send_file(
+            io.BytesIO(output.getvalue().encode('utf-8')),
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=f'security_logs_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        )
+        
     except Exception as e:
-        logger.error(f"Error exporting security logs: {str(e)}")
         return jsonify({
             'success': False,
             'message': 'Failed to export security logs'
+        }), 500
+
+@admin_api.route('/templates/<path:template_path>')
+@login_required
+@admin_required
+def get_template(template_path):
+    """Get a specific email template"""
+    try:
+        # Handle template path to find the correct template
+        template = EmailTemplate.query.filter_by(name=template_path).first()
+        if not template:
+            return jsonify({
+                'success': False,
+                'message': 'Template not found'
+            }), 404
+            
+        return jsonify({
+            'success': True,
+            'template': {
+                'id': template.id,
+                'name': template.name,
+                'subject': template.subject,
+                'html_content': template.html_content
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error getting template: {sanitize_log(str(e))}")
+        return jsonify({
+            'success': False,
+            'message': 'Failed to load template'
+        }), 500
+
+@admin_api.route('/templates/<path:template_path>/preview')
+@login_required
+@admin_required
+def preview_template(template_path):
+    """Preview a specific email template"""
+    try:
+        # Handle template path to find the correct template
+        template = EmailTemplate.query.filter_by(name=template_path).first()
+        if not template:
+            return jsonify({
+                'success': False,
+                'message': 'Template not found'
+            }), 404
+            
+        return jsonify({
+            'success': True,
+            'html': template.html_content
+        })
+    except Exception as e:
+        logger.error(f"Error previewing template: {sanitize_log(str(e))}")
+        return jsonify({
+            'success': False,
+            'message': 'Failed to load template preview'
+        }), 500
+
+@admin_api.route('/stats/charts')
+@login_required
+def get_chart_data():
+    try:
+        # Get activity data for the past 7 days
+        activity_data = {
+            'labels': [],
+            'values': []
+        }
+        
+        # TODO: Implement actual data gathering logic
+        # This is just placeholder data
+        activity_data['labels'] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        activity_data['values'] = [65, 59, 80, 81, 56, 55, 40]
+        
+        return jsonify({
+            'success': True,
+            'activity': activity_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': 'Failed to load chart data'
         }), 500 

@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 from src.models import Campaign, CampaignStatus
 from src.utils.rate_limiter import RateLimiter
-from src import db
+from src.database import db
 import logging
 
 logger = logging.getLogger(__name__)

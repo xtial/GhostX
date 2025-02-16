@@ -1,11 +1,48 @@
 import { showNotification, apiRequest } from './utils.js';
 
 // Initialize tooltips
-tippy('[data-tippy-content]', {
-    placement: 'bottom',
-    animation: 'scale',
-    theme: 'custom'
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Tippy.js tooltips
+    if (typeof tippy !== 'undefined') {
+        tippy('[data-tippy-content]', {
+            theme: 'light',
+            placement: 'top',
+            animation: 'scale'
+        });
+    }
+
+    // Initialize Ace Editor if element exists
+    const editor = document.getElementById('template-editor');
+    if (editor) {
+        const aceEditor = ace.edit('template-editor');
+        aceEditor.setTheme('ace/theme/monokai');
+        aceEditor.session.setMode('ace/mode/html');
+        aceEditor.setOptions({
+            enableBasicAutocompletion: true,
+            enableLiveAutocompletion: true,
+            enableSnippets: true,
+            showPrintMargin: false,
+            fontSize: '14px'
+        });
+    }
+
+    // Initialize template search and filters
+    const templateSearch = document.getElementById('templateSearch');
+    const templateFilter = document.getElementById('templateFilter');
+    if (templateSearch && templateFilter) {
+        templateSearch.addEventListener('input', filterTemplates);
+        templateFilter.addEventListener('change', filterTemplates);
+    }
 });
+
+// Error handling
+window.onerror = function(msg, url, line) {
+    console.error(`Error: ${msg}\nURL: ${url}\nLine: ${line}`);
+    return false;
+};
+
+// CSRF Token setup
+window.CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
 // Initialize Ace Editor
 let editor;
@@ -60,9 +97,6 @@ document.querySelectorAll('.nav-link[data-tab]').forEach(item => {
         });
     });
 });
-
-// Get CSRF token
-const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
 // Common fetch options with CSRF token
 const fetchOptions = (method, body = null) => ({
@@ -790,3 +824,24 @@ window.showNewCampaignModal = undefined;
 window.closeNewCampaignModal = undefined;
 window.closeCampaignDetailsModal = undefined;
 window.showCampaignDetails = undefined;
+
+// Make filterTemplates globally accessible
+window.filterTemplates = function filterTemplates() {
+    const searchTerm = document.getElementById('templateSearch')?.value.toLowerCase() || '';
+    const filterValue = document.getElementById('templateFilter')?.value || 'all';
+    const showFavoritesOnly = document.getElementById('showFavorites')?.checked || false;
+    
+    document.querySelectorAll('.template-card').forEach(card => {
+        const templateName = card.querySelector('h3')?.textContent.toLowerCase() || '';
+        const templateType = card.dataset.type;
+        const templateFilename = card.querySelector('.favorite-btn')?.dataset.template;
+        const isFavorite = localStorage.getItem(`fav_${templateFilename}`) === 'true';
+        
+        const matchesSearch = templateName.includes(searchTerm);
+        const matchesFilter = filterValue === 'all' || templateType === filterValue;
+        const matchesFavorites = !showFavoritesOnly || isFavorite;
+        
+        card.style.display = (matchesSearch && matchesFilter && matchesFavorites) ? 'flex' : 'none';
+        card.style.opacity = (matchesSearch && matchesFilter && matchesFavorites) ? '1' : '0';
+    });
+};
