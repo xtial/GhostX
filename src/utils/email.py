@@ -41,7 +41,9 @@ def send_spoofed_email(to_email, from_name, from_email, subject, html_content):
             server.login(SMTP_CONFIG['username'], SMTP_CONFIG['password'])
             server.send_message(msg)
             
-        logger.info(f"Email sent successfully to {to_email} from {from_name} <{sender_email}>")
+        sanitized_to_email = to_email.replace('\r\n', '').replace('\n', '')
+        sanitized_from_name = from_name.replace('\r\n', '').replace('\n', '')
+        logger.info(f"Email sent successfully to {sanitized_to_email} from {sanitized_from_name} <{sender_email}>")
         return True
         
     except Exception as e:
