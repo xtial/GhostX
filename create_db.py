@@ -136,7 +136,7 @@ def setup_db(remake):
             # Create initial admin user with minimal required fields
             admin = User(
                 username='admin',
-                email='admin@ghostx.com',
+                email='admin@domain.com',
                 role=UserRole.ADMIN.value,
                 is_admin=True,
                 is_active=True,

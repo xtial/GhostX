@@ -1,3 +1,8 @@
+# Environment variables
+.env
+.env.*
+!.env.template
+
 # Python
 __pycache__/
 *.py[cod]
@@ -22,39 +27,81 @@ wheels/
 
 # Virtual Environment
 venv/
-ENV/
 env/
+ENV/
 .env
+.venv
+.env.*
+!.env.template
 
 # IDE
 .idea/
 .vscode/
+.cursor/
 *.swp
 *.swo
+.project
+.pydevproject
+.settings/
+*.sublime-workspace
+*.sublime-project
 
-# Project specific
+# Logs and Sessions
 logs/
 *.log
-data/
+flask_session/
 sessions/
-spoofer.db
+instance/
+*.session
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Database
 *.db
-database/data/
+*.sqlite
+*.sqlite3
+*.db-journal
+spoofer.db
 
-# Sensitive files
-config.ini
-secrets.json
+# Dependency Management
+poetry.lock
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Windows
-Thumbs.db
-Desktop.ini
-
-# macOS
+# Distribution
+.Python
+*.manifest
+*.spec
 .DS_Store
-.AppleDouble
-.LSOverride
+Thumbs.db
 
-# Temp files
+# Documentation
+/site
+docs/_build/
+
+# Security
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+
+# Temporary files
 *.tmp
 *.bak
 *.swp
+*~
+
+# Local development
+docker-compose.override.yml
+.docker/
+local_settings.py

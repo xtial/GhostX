@@ -5,81 +5,90 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "ghostx"
 version = "1.0.0"
-description = "Professional Email Management System"
-authors = ["Ghostx Team <admin@ghost.sbs>"]
-readme = "README.md"
-packages = [{include = "src"}]
+description = "A modern, secure, and feature-rich email management system"
+authors = ["xtial <xtial@github.com>"]
 license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/xtial/GhostX"
+repository = "https://github.com/xtial/GhostX"
+documentation = "https://github.com/xtial/GhostX/docs"
+keywords = ["email", "management", "security", "flask", "web"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Framework :: Flask",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Communications :: Email",
+    "Topic :: Security",
+]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<4.0"
-flask = "*"
-flask-login = "*"
-flask-sqlalchemy = "*"
-flask-wtf = "*"
-flask-session = "*"
-flask-limiter = "*"
-flask-migrate = "*"
-sqlalchemy = "*"
-werkzeug = "*"
-jinja2 = "*"
-python-dotenv = "*"
-waitress = ">=3.0.1"
-beautifulsoup4 = "*"
-gunicorn = "*"
-email-validator = "*"
-cryptography = "*"
-requests = "*"
-python-dateutil = "*"
-pytz = "*"
-bcrypt = "*"
-itsdangerous = "*"
-passlib = ">=1.7.4"
+python = "^3.10"
+flask = "^2.3.0"
+flask-sqlalchemy = "^3.1.0"
+flask-login = "^0.6.2"
+flask-wtf = "^1.2.0"
+flask-migrate = "^4.0.0"
+sqlalchemy = "^2.0.0"
+wtforms = "^3.1.0"
+email-validator = "^2.1.0"
+python-dotenv = "^1.0.0"
+bcrypt = "^4.0.0"
+pyjwt = "^2.8.0"
+requests = "^2.31.0"
+gunicorn = "^21.2.0"
+psycopg2-binary = "^2.9.0"
+redis = "^5.0.0"
+pillow = "^10.0.0"
+pydantic = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "*"
-black = "*"
-flake8 = "*"
-mypy = "*"
-coverage = "*"
-pytest-cov = "*"
-bandit = "*"
-safety = "*"
-isort = "*"
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+black = "^23.9.0"
+flake8 = "^6.1.0"
+mypy = "^1.5.0"
+bandit = "^1.7.0"
+safety = "^2.3.0"
+pre-commit = "^3.4.0"
+pytest-mock = "^3.11.0"
+pytest-flask = "^1.2.0"
+faker = "^19.6.0"
 
 [tool.poetry.scripts]
 ghostx = "setup:run_server"
 
 [tool.black]
-line-length = 127
+line-length = 88
 target-version = ['py310']
 include = '\.pyi?$'
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 127
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-
 [tool.mypy]
 python_version = "3.10"
-warn_return_any = true
-warn_unused_configs = true
 disallow_untyped_defs = true
+disallow_incomplete_defs = true
 check_untyped_defs = true
-ignore_missing_imports = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+strict_optional = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q --cov=src --cov-report=xml"
+addopts = "-ra -q --cov=ghostx --cov-report=html"
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source = ["src"]
-omit = ["tests/*", "setup.py"]
+source = ["ghostx"]
+omit = ["tests/*", "**/__init__.py"]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -88,8 +97,4 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
-]
-
-[tool.bandit]
-exclude_dirs = ["tests"]
-skips = ["B101"] 
+] 

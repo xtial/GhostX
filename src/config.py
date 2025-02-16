@@ -48,7 +48,7 @@ class Config:
     WTF_CSRF_SECRET_KEY = SECRET_KEY
     
     # Domain Configuration
-    SERVER_NAME = os.getenv('DOMAIN', 'ghost.sbs')  # Your domain
+    SERVER_NAME = os.getenv('DOMAIN', 'localhost')  # Server domain
     PREFERRED_URL_SCHEME = os.getenv('DOMAIN_SCHEME', 'https')  # Use HTTPS by default
     
     # Database Configuration

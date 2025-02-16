@@ -676,7 +676,7 @@ async function useTemplate(templateFilename) {
         
         // Set default values based on template type
         let senderName = 'Support Team';
-        let senderEmail = 'support@example.com';
+        let senderEmail = 'sender@localhost';
         let subject = 'Important Notice';
         
         if (templateFilename.includes('coinbase')) {
@@ -1519,51 +1519,112 @@ function initializeSecurityMonitoring() {
 
 async function updateSecurityStatus() {
     try {
-        const response = await fetch('/api/admin/system-status', fetchOptions('GET'));
+        const response = await fetchOptions('GET')('/api/admin/system-status');
         const data = await response.json();
         
         if (data.success) {
-            // Update status indicators
             updateStatusIndicator('apiStatus', data.api_status);
             updateStatusIndicator('dbStatus', data.db_status);
             updateStatusIndicator('emailStatus', data.email_status);
+            
+            // Update status badges with tooltips
+            const statuses = ['api', 'db', 'email'];
+            statuses.forEach(service => {
+                const status = data[`${service}_status`];
+                const element = document.getElementById(`${service}Status`);
+                if (element) {
+                    element.className = `status-indicator ${status}`;
+                    element.setAttribute('title', `${service.toUpperCase()} Status: ${status}`);
+                }
+            });
         } else {
-            throw new Error(data.message || 'Failed to update system status');
+            throw new Error(data.message || 'Failed to update security status');
         }
     } catch (error) {
-        console.error('Error updating system status:', error);
-        showNotification('Failed to update system status', 'error');
+        console.error('Error updating security status:', error);
+        showNotification('Failed to update security status', 'error');
     }
 }
 
 function updateStatusIndicator(elementId, status) {
-    const indicator = document.getElementById(elementId);
-    if (indicator) {
-        indicator.className = 'status-indicator ' + status.toLowerCase();
-        indicator.title = `Last checked: ${new Date().toLocaleTimeString()}`;
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    // Remove existing status classes
+    element.classList.remove('normal', 'warning', 'error');
+    
+    // Add new status class
+    element.classList.add(status);
+    
+    // Update icon and color based on status
+    const icon = element.querySelector('i');
+    if (icon) {
+        icon.className = 'fas ' + getStatusIcon(status);
+        icon.style.color = getStatusColor(status);
+    }
+}
+
+function getStatusIcon(status) {
+    switch (status) {
+        case 'normal':
+            return 'fa-check-circle';
+        case 'warning':
+            return 'fa-exclamation-triangle';
+        case 'error':
+            return 'fa-times-circle';
+        default:
+            return 'fa-question-circle';
+    }
+}
+
+function getStatusColor(status) {
+    switch (status) {
+        case 'normal':
+            return '#28a745';
+        case 'warning':
+            return '#ffc107';
+        case 'error':
+            return '#dc3545';
+        default:
+            return '#6c757d';
     }
 }
 
 async function loadActiveSessions() {
     try {
-        const response = await fetch('/api/admin/active-sessions', fetchOptions('GET'));
+        const response = await fetchOptions('GET')('/api/admin/active-sessions');
         const data = await response.json();
         
         if (data.success) {
-            const sessionsList = document.getElementById('activeSessions');
-            sessionsList.innerHTML = data.sessions.map(session => `
-                <div class="session-item">
+            const container = document.getElementById('activeSessions');
+            if (!container) return;
+            
+            container.innerHTML = data.sessions.map(session => `
+                <div class="session-item" id="session_${session.id}">
                     <div class="session-info">
-                        <span class="session-user">${session.username}</span>
-                        <span class="session-details">IP: ${session.ip} | Last active: ${session.last_active}</span>
+                        <div class="session-user">
+                            <i class="fas fa-user"></i>
+                            <span>${session.username}</span>
+                        </div>
+                        <div class="session-details">
+                            <span><i class="fas fa-globe"></i> ${session.ip}</span>
+                            <span><i class="fas fa-clock"></i> ${session.last_active}</span>
+                            <span><i class="fas fa-browser"></i> ${session.user_agent}</span>
+                        </div>
                     </div>
                     <div class="session-actions">
-                        <button onclick="terminateSession('${session.id}')">
-                            <i class="fas fa-times"></i>
+                        <button onclick="terminateSession('${session.id}')" class="btn btn-danger btn-sm">
+                            <i class="fas fa-times"></i> Terminate
                         </button>
                     </div>
                 </div>
             `).join('');
+            
+            // Update session count
+            const countElement = document.getElementById('sessionCount');
+            if (countElement) {
+                countElement.textContent = data.sessions.length;
+            }
         } else {
             throw new Error(data.message || 'Failed to load active sessions');
         }
@@ -1575,28 +1636,127 @@ async function loadActiveSessions() {
 
 async function updateMetrics() {
     try {
-        const response = await fetch('/api/admin/security-metrics', fetchOptions('GET'));
+        const response = await fetchOptions('GET')('/api/admin/security-metrics');
         const data = await response.json();
         
         if (data.success) {
-            const chart = window.securityChart;
-            
-            // Update chart data
-            chart.data.labels = data.timestamps;
-            chart.data.datasets[0].data = data.login_attempts;
-            chart.data.datasets[1].data = data.api_requests;
-            
-            chart.update();
+            // Update charts
+            updateLoginAttemptsChart(data.timestamps, data.login_attempts);
+            updateAPIRequestsChart(data.timestamps, data.api_requests);
             
             // Update alerts
             updateSecurityAlerts(data.alerts);
+            
+            // Update rate limiting status
+            updateRateLimitStatus(data);
         } else {
             throw new Error(data.message || 'Failed to update metrics');
         }
     } catch (error) {
         console.error('Error updating metrics:', error);
-        showNotification('Failed to update metrics', 'error');
+        showNotification('Failed to update security metrics', 'error');
     }
+}
+
+function updateLoginAttemptsChart(labels, data) {
+    const ctx = document.getElementById('loginAttemptsChart');
+    if (!ctx) return;
+    
+    if (!window.loginChart) {
+        window.loginChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Login Attempts',
+                    data: data,
+                    borderColor: '#007bff',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        window.loginChart.data.labels = labels;
+        window.loginChart.data.datasets[0].data = data;
+        window.loginChart.update();
+    }
+}
+
+function updateAPIRequestsChart(labels, data) {
+    const ctx = document.getElementById('apiRequestsChart');
+    if (!ctx) return;
+    
+    if (!window.apiChart) {
+        window.apiChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'API Requests',
+                    data: data,
+                    borderColor: '#28a745',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        window.apiChart.data.labels = labels;
+        window.apiChart.data.datasets[0].data = data;
+        window.apiChart.update();
+    }
+}
+
+function updateRateLimitStatus(data) {
+    const container = document.getElementById('rateLimitStatus');
+    if (!container) return;
+    
+    const hourlyLimit = data.hourly_limit || 100;
+    const hourlyUsed = data.hourly_used || 0;
+    const hourlyPercent = (hourlyUsed / hourlyLimit) * 100;
+    
+    container.innerHTML = `
+        <div class="rate-limit-item">
+            <div class="rate-limit-header">
+                <span>Hourly API Requests</span>
+                <span class="rate-limit-count">${hourlyUsed}/${hourlyLimit}</span>
+            </div>
+            <div class="progress">
+                <div class="progress-bar ${hourlyPercent > 80 ? 'bg-danger' : hourlyPercent > 60 ? 'bg-warning' : 'bg-success'}"
+                     role="progressbar"
+                     style="width: ${hourlyPercent}%"
+                     aria-valuenow="${hourlyPercent}"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 function updateSecurityAlerts(alerts) {

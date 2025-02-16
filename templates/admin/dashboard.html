@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="dashboard-header">
+        <h1>Admin Dashboard</h1>
+        <div class="dashboard-actions">
+            <button class="btn btn-primary" onclick="refreshDashboard()">
+                <i class="fas fa-sync"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- System Status Section -->
+    <section class="dashboard-section">
+        <h2>System Status</h2>
+        <div class="status-grid">
+            <div id="apiStatus" class="status-indicator">
+                <i class="fas fa-cloud"></i>
+                <span>API Status</span>
+            </div>
+            <div id="dbStatus" class="status-indicator">
+                <i class="fas fa-database"></i>
+                <span>Database Status</span>
+            </div>
+            <div id="emailStatus" class="status-indicator">
+                <i class="fas fa-envelope"></i>
+                <span>Email Service Status</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security Metrics Section -->
+    <section class="dashboard-section">
+        <h2>Security Metrics</h2>
+        <div class="charts-container">
+            <div class="chart-wrapper">
+                <div class="chart-header">
+                    <span class="chart-title">Login Attempts</span>
+                </div>
+                <canvas id="loginAttemptsChart"></canvas>
+            </div>
+            <div class="chart-wrapper">
+                <div class="chart-header">
+                    <span class="chart-title">API Requests</span>
+                </div>
+                <canvas id="apiRequestsChart"></canvas>
+            </div>
+        </div>
+        <div id="rateLimitStatus"></div>
+    </section>
+
+    <!-- Active Sessions Section -->
+    <section class="dashboard-section">
+        <h2>Active Sessions <span class="badge bg-primary" id="sessionCount">0</span></h2>
+        <div id="activeSessions" class="sessions-container"></div>
+    </section>
+
+    <!-- Security Alerts Section -->
+    <section class="dashboard-section">
+        <h2>Security Alerts</h2>
+        <div id="securityAlerts" class="alerts-container"></div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize dashboard
+        updateSecurityStatus();
+        loadActiveSessions();
+        updateMetrics();
+
+        // Set up auto-refresh
+        setInterval(updateSecurityStatus, 30000);  // Every 30 seconds
+        setInterval(loadActiveSessions, 60000);    // Every minute
+        setInterval(updateMetrics, 300000);        // Every 5 minutes
+    });
+
+    function refreshDashboard() {
+        updateSecurityStatus();
+        loadActiveSessions();
+        updateMetrics();
+    }
+</script>
+{% endblock %} 

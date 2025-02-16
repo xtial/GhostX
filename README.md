@@ -1,10 +1,14 @@
 # GhostX - Professional Email Management System
 
-![GhostX Logo](static/favicon_io/favicon-32x32.png)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 A modern, secure, and feature-rich email management system built with Flask and modern web technologies.
 
-## 🚀 Features
+## 🌟 Features
 
 ### 📧 Email Management
 - Custom email template creation and management
@@ -36,22 +40,12 @@ A modern, secure, and feature-rich email management system built with Flask and 
 - Real-time monitoring
 - Performance metrics
 
-## 🛠️ Technical Stack
-
-- **Backend**: Python/Flask
-- **Database**: SQLAlchemy with SQLite
-- **Frontend**: HTML5, CSS3, JavaScript
-- **Security**: Flask-Login, Flask-WTF
-- **UI Components**: Font Awesome, Tippy.js
-- **Editor**: Ace Editor
-- **Styling**: Custom CSS with CSS Variables
-
-## 📦 Installation
+## 🚀 Quick Start
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/GhostRelayX/ghostx.git
-cd ghostx
+git clone https://github.com/yourusername/GhostX.git
+cd GhostX
 ```
 
 2. Create a virtual environment:
@@ -60,143 +54,76 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. Install dependencies:
+3. Install dependencies with Poetry:
 ```bash
-pip install -r requirements.txt
+pip install poetry
+poetry install
 ```
 
-4. Initialize the database:
+4. Set up environment variables:
 ```bash
-python create_db.py --remake
+cp .env.template .env
+# Edit .env with your settings
 ```
 
-5. Start the application:
+5. Initialize the database:
 ```bash
-python run.py
+poetry run python create_db.py --remake
 ```
 
-## ⚙️ Configuration
-
-Create a `.env` file in the root directory with the following variables:
-```env
-SECRET_KEY=your_secret_key
-DEBUG=True
-DATABASE_URL=sqlite:///spoofer.db
-MAX_EMAILS_PER_HOUR=10
-MAX_EMAILS_PER_DAY=50
-```
-
-## 🔧 Usage
-
-### User Dashboard
-- View email statistics
-- Monitor sending limits
-- Access email templates
-- Create custom emails
-- Track success rates
-
-### Template Management
-- Browse pre-built templates
-- Create custom templates
-- Save favorite templates
-- Filter by categories
-- Search functionality
-
-### Account Management
-- Update profile settings
-- Monitor account activity
-- View usage statistics
-- Track email history
-
-## 🔐 Security Recommendations
-
-1. Always use strong passwords
-2. Enable two-factor authentication when available
-3. Monitor account activity regularly
-4. Keep the application and dependencies updated
-5. Review security logs periodically
-
-## 📱 Mobile Support
-
-The application is fully responsive and supports:
-- Mobile phones
-- Tablets
-- Desktop browsers
-
-## 🌐 Browser Support
-
-- Chrome (recommended)
-- Firefox
-- Safari
-- Edge
-- Opera
-
-## 🛡️ Rate Limiting
-
-- Hourly email sending limits
-- Daily email sending limits
-- API rate limiting
-- Login attempt limiting
-
-## 🔄 Updates
-
-The application checks for updates automatically. To manually update:
-
-1. Pull the latest changes:
+6. Start the application:
 ```bash
-git pull origin main
+poetry run python run.py
 ```
 
-2. Update dependencies:
-```bash
-pip install -r requirements.txt --upgrade
-```
+## 📖 Documentation
 
-3. Update database:
-```bash
-python create_db.py
-```
+- [API Documentation](docs/API.md)
+- [Development Guide](docs/DEVELOPMENT.md)
+- [Deployment Guide](docs/DEPLOYMENT.md)
+- [Contributing Guidelines](CONTRIBUTING.md)
+- [Security Policy](SECURITY.md)
 
-## 📄 License
+## 🛠️ Tech Stack
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## ⚠️ Disclaimer
-
-This tool is for educational purposes only. Users are responsible for complying with applicable laws and regulations.
+- **Backend**: Python/Flask
+- **Database**: SQLAlchemy with SQLite/PostgreSQL
+- **Frontend**: HTML5, CSS3, JavaScript
+- **Security**: Flask-Login, Flask-WTF
+- **UI**: Font Awesome, Custom CSS Framework
+- **Testing**: Pytest, Coverage
+- **Code Quality**: Black, Flake8, MyPy
+- **Security Scanning**: Bandit, Safety
 
 ## 🤝 Contributing
 
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
 1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## 🐛 Bug Reports
+## 📝 License
 
-Report bugs through the GitHub issues page. Include:
-- Browser and version
-- Operating system
-- Steps to reproduce
-- Expected vs actual behavior
-- Screenshots if applicable
-
-## 📚 Documentation
-
-Additional documentation available in the `/docs` folder:
-- API Documentation
-- Security Guidelines
-- Development Guide
-- Deployment Guide
+This project is licensed under the MIT License with additional terms - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- Font Awesome for icons
-- Ace Editor for the code editor
-- Flask community for the framework
-- All contributors and testers
+- [Flask](https://flask.palletsprojects.com/) for the web framework
+- [SQLAlchemy](https://www.sqlalchemy.org/) for the ORM
+- [Font Awesome](https://fontawesome.com/) for icons
+- All our [contributors](CONTRIBUTORS.md)
+
+## 📫 Contact
+
+- GitHub Issues: For bug reports and feature requests
+- Discussions: For questions and community discussions
+- Security: See our [Security Policy](SECURITY.md)
 
 ---
 
-Made with ❤️ by the GhostX Team 
+<div align="center">
+Made with ❤️ by the GhostX Team
+</div> 
