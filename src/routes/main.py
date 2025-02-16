@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, current_app, jsonify, request
+from flask import Blueprint, render_template, redirect, url_for, current_app, jsonify, request, send_from_directory
 from flask_login import login_required, current_user
 from flask_wtf.csrf import generate_csrf
 from datetime import datetime, timedelta
@@ -7,6 +7,7 @@ from src.models import EmailTemplate, User
 from src.routes.auth import user_required
 from .. import db, logger
 from ..utils.log_sanitizer import sanitize_user_data, sanitize_log
+import os
 
 main = Blueprint('main', __name__)
 
@@ -124,3 +125,16 @@ def get_profile():
     except Exception as e:
         logger.error(f"Error retrieving profile: {sanitize_log(str(e))}")
         return jsonify({'error': 'Internal server error'}), 500 
+
+@main.route('/favicon.ico')
+def favicon():
+    """Serve the favicon"""
+    try:
+        return send_from_directory(
+            os.path.join(os.path.dirname(current_app.root_path), 'static', 'favicon_io'),
+            'favicon.ico',
+            mimetype='image/vnd.microsoft.icon'
+        )
+    except Exception as e:
+        logger.error(f"Error serving favicon: {sanitize_log(str(e))}")
+        return '', 404 

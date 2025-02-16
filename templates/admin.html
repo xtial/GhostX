@@ -5,14 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>GhostX - Admin Control Center</title>
+    
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Favicons -->
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon_io/apple-touch-icon.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon_io/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon_io/favicon-16x16.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='favicon_io/site.webmanifest') }}">
+    
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script>
+        // Ensure Chart.js is loaded before proceeding
+        window.addEventListener('load', function() {
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js failed to load. Loading fallback...');
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js';
+                script.onload = function() {
+                    initializeCharts();
+                };
+                document.head.appendChild(script);
+            } else {
+                initializeCharts();
+            }
+        });
+
+        function initializeCharts() {
+            if (typeof initCharts === 'function') {
+                initCharts();
+            }
+            if (typeof initializeSecurityMonitoring === 'function') {
+                initializeSecurityMonitoring();
+            }
+        }
+    </script>
 </head>
 <body>
     <canvas id="matrix-rain"></canvas>
@@ -129,6 +160,28 @@
                     <button class="auth-button" onclick="exportSecurityLogs()">
                         <i class="fas fa-file-export"></i> Export Logs
                     </button>
+                </div>
+            </div>
+
+            <!-- Rate Limits Panel -->
+            <div class="security-card">
+                <div class="security-header">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <h3>Rate Limits Control</h3>
+                </div>
+                <div class="rate-limits-panel">
+                    <div class="rate-limits-info">
+                        <p>Manage registration and API rate limits for all users.</p>
+                        <div class="limits-status" id="current-limits-status">
+                            <!-- Status will be updated dynamically -->
+                        </div>
+                    </div>
+                    <div class="control-panel">
+                        <button class="action-button danger" onclick="resetRateLimits()">
+                            <i class="fas fa-redo"></i> Reset All Rate Limits
+                        </button>
+                    </div>
+                    <div id="rate-limits-status" class="status-message"></div>
                 </div>
             </div>
 
@@ -276,6 +329,21 @@
                 </div>
             </form>
         </section>
+
+        <!-- Rate Limits Section -->
+        <div class="admin-section" id="rate-limits-section">
+            <div class="section-header">
+                <h2><i class="fas fa-shield-alt"></i> Rate Limits</h2>
+            </div>
+            <div class="section-content">
+                <div class="control-panel">
+                    <button class="action-button danger" onclick="resetRateLimits()">
+                        <i class="fas fa-redo"></i> Reset All Rate Limits
+                    </button>
+                </div>
+                <div id="rate-limits-status" class="status-message"></div>
+            </div>
+        </div>
     </div>
 
     <div id="notifications"></div>
@@ -346,5 +414,159 @@
 
     <script type="module" src="{{ url_for('static', filename='js/utils.js') }}"></script>
     <script type="module" src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    <script>
+    function resetRateLimits() {
+        if (!confirm('Are you sure you want to reset all rate limits? This will clear all registration attempt records.')) {
+            return;
+        }
+
+        const statusElement = document.getElementById('rate-limits-status');
+        statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting rate limits...';
+        statusElement.className = 'status-message info';
+
+        fetch('/api/admin/rate-limits/reset', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.message || `HTTP error! status: ${response.status}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                statusElement.innerHTML = '<i class="fas fa-check"></i> ' + data.message;
+                statusElement.className = 'status-message success';
+                // Refresh security metrics if available
+                if (typeof updateSecurityMetrics === 'function') {
+                    updateSecurityMetrics();
+                }
+                // Auto-hide success message after 5 seconds
+                setTimeout(() => {
+                    statusElement.innerHTML = '';
+                    statusElement.className = 'status-message';
+                }, 5000);
+            } else {
+                throw new Error(data.message || 'Failed to reset rate limits');
+            }
+        })
+        .catch(error => {
+            statusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + error.message;
+            statusElement.className = 'status-message error';
+            // Log the error
+            console.error('Error resetting rate limits:', error);
+        });
+    }
+
+    function deleteUser(userId, username) {
+        if (!confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        fetch('/api/admin/user/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ user_id: userId }),
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.message || `HTTP error! status: ${response.status}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Remove the user card from the UI
+                const userCard = document.querySelector(`[data-user-id="${userId}"]`);
+                if (userCard) {
+                    userCard.remove();
+                }
+                showNotification('success', 'User deleted successfully');
+                // Refresh user list if available
+                if (typeof loadUsers === 'function') {
+                    loadUsers();
+                }
+            } else {
+                throw new Error(data.message || 'Failed to delete user');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting user:', error);
+            showNotification('error', error.message);
+        });
+    }
+
+    function toggleUserStatus(userId, currentStatus) {
+        const newStatus = !currentStatus;
+        
+        fetch('/api/admin/user/toggle-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ 
+                user_id: userId,
+                active: newStatus 
+            }),
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.message || `HTTP error! status: ${response.status}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Update the button text and status in the UI
+                const statusButton = document.querySelector(`[data-user-id="${userId}"] .status-toggle`);
+                if (statusButton) {
+                    statusButton.textContent = newStatus ? 'Deactivate' : 'Activate';
+                    statusButton.classList.toggle('warning', newStatus);
+                    statusButton.classList.toggle('success', !newStatus);
+                }
+                showNotification('success', data.message);
+            } else {
+                throw new Error(data.message || 'Failed to update user status');
+            }
+        })
+        .catch(error => {
+            console.error('Error toggling user status:', error);
+            showNotification('error', error.message);
+        });
+    }
+
+    function showNotification(type, message) {
+        const notifications = document.getElementById('notifications');
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+            <span>${message}</span>
+        `;
+        notifications.appendChild(notification);
+        
+        // Remove notification after 5 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 5000);
+    }
+    </script>
 </body>
 </html> 

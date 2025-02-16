@@ -2,16 +2,21 @@ from flask import Blueprint, jsonify, request, send_file
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import func, text
-from src.models import db, User, Session, LoginAttempt, APIRequest, SecurityLog, EmailTemplate
+from src.models import db, User, Session, LoginAttempt, APIRequest, SecurityLog, EmailTemplate, RegistrationAttempt
 from src.utils.decorators import admin_required
 from src.utils.security import check_system_status
 from src.utils.log_sanitizer import sanitize_log
+from src.utils.rate_limiter import limiter
+from src.config import Config
 import logging
 import csv
 import io
 
 logger = logging.getLogger(__name__)
 admin_api = Blueprint('admin_api', __name__)
+
+# All admin routes are exempt from rate limiting by default
+limiter.exempt(admin_api)
 
 @admin_api.route('/system-status')
 @login_required
@@ -332,4 +337,110 @@ def get_chart_data():
         return jsonify({
             'success': False,
             'message': 'Failed to load chart data'
+        }), 500
+
+@admin_api.route('/rate-limits/<int:user_id>')
+@login_required
+@admin_required
+def get_user_rate_limits(user_id):
+    """Get rate limits and usage for a specific user"""
+    try:
+        quota = limiter.get_remaining_quota(user_id)
+        if not quota:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to get rate limit information'
+            }), 404
+            
+        return jsonify({
+            'success': True,
+            'quota': quota
+        })
+    except Exception as e:
+        logger.error(f"Error getting user rate limits: {sanitize_log(str(e))}")
+        return jsonify({
+            'success': False,
+            'message': 'Failed to get rate limit information'
+        }), 500
+
+@admin_api.route('/rate-limits/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def update_user_rate_limits(user_id):
+    """Update rate limits for a specific user"""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'User not found'
+            }), 404
+            
+        data = request.get_json()
+        hourly = data.get('hourly')
+        daily = data.get('daily')
+        concurrent = data.get('concurrent')
+        
+        if limiter.update_limits(user.role, hourly, daily, concurrent):
+            return jsonify({
+                'success': True,
+                'message': 'Rate limits updated successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to update rate limits'
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"Error updating user rate limits: {sanitize_log(str(e))}")
+        return jsonify({
+            'success': False,
+            'message': 'Failed to update rate limits'
+        }), 500
+
+@admin_api.route('/rate-limits/reset', methods=['POST'])
+@login_required
+@admin_required
+def reset_rate_limits():
+    """Reset all rate limits"""
+    try:
+        # Reset registration attempts
+        success, message = RegistrationAttempt.reset_limits()
+        
+        if success:
+            # Reset the Flask-Limiter limits
+            try:
+                limiter.reset()
+                logger.info("Successfully reset Flask-Limiter rate limits")
+            except Exception as e:
+                logger.warning(f"Failed to reset Flask-Limiter limits: {str(e)}")
+                # Continue anyway since we successfully reset registration attempts
+            
+            # Log the action
+            log = SecurityLog(
+                title='Rate Limits Reset',
+                message=f'Admin {current_user.username} reset all rate limits',
+                severity='medium',
+                user_id=current_user.id
+            )
+            db.session.add(log)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Rate limits reset successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': message
+            }), 500
+            
+    except Exception as e:
+        error_msg = f"Error resetting rate limits: {str(e)}"
+        logger.error(error_msg)
+        return jsonify({
+            'success': False,
+            'message': error_msg
         }), 500 

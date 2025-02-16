@@ -1,6 +1,9 @@
 from datetime import datetime
 from src.database import db
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class EventType(Enum):
     SENT = 'sent'
@@ -10,12 +13,12 @@ class EventType(Enum):
     BOUNCED = 'bounced'
     SPAM = 'spam'
     UNSUBSCRIBED = 'unsubscribed'
+    FAILED = 'failed'
 
 class EmailTracking(db.Model):
     __tablename__ = 'email_tracking'
 
     id = db.Column(db.Integer, primary_key=True)
-    campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     recipient_email = db.Column(db.String(120), nullable=False)
     template_id = db.Column(db.Integer, db.ForeignKey('email_templates.id'))
@@ -58,7 +61,6 @@ class EmailTracking(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    campaign = db.relationship('Campaign', backref=db.backref('tracking_events', lazy=True))
     user = db.relationship('User', backref=db.backref('tracking_events', lazy=True))
     template = db.relationship('EmailTemplate', backref=db.backref('tracking_events', lazy=True))
 
@@ -67,57 +69,133 @@ class EmailTracking(db.Model):
         self.message_id = self.generate_message_id()
         self.tracking_pixel_id = self.generate_tracking_id()
 
-    def track_event(self, event_type: EventType, metadata=None):
-        now = datetime.utcnow()
-        
-        if event_type == EventType.SENT:
-            self.sent_at = now
-        elif event_type == EventType.DELIVERED:
-            self.delivered_at = now
-            self.is_delivered = True
-        elif event_type == EventType.OPENED:
-            if not self.opened_at:
-                self.opened_at = now
-            self.is_opened = True
-            self.open_count += 1
-        elif event_type == EventType.CLICKED:
-            self.last_clicked_at = now
-            self.is_clicked = True
-            self.click_count += 1
-        elif event_type == EventType.BOUNCED:
-            self.is_bounced = True
-        elif event_type == EventType.SPAM:
-            self.is_spam = True
-        elif event_type == EventType.UNSUBSCRIBED:
-            self.is_unsubscribed = True
-        
-        self.updated_at = now
-        
-        # Update campaign stats
-        if self.campaign:
-            if event_type == EventType.DELIVERED:
-                self.campaign.emails_delivered += 1
-            elif event_type == EventType.OPENED:
-                self.campaign.emails_opened += 1
-            elif event_type == EventType.CLICKED:
-                self.campaign.emails_clicked += 1
-            elif event_type in [EventType.BOUNCED, EventType.SPAM]:
-                self.campaign.emails_failed += 1
-        
-        db.session.commit()
+    def track_event(self, event_type: str, metadata: dict = None):
+        """Track an email event with enhanced security and validation"""
+        try:
+            if event_type not in EventType.__members__:
+                raise ValueError(f"Invalid event type: {event_type}")
+                
+            event = EventType[event_type.upper()]
+            self.events = self.events or []
+            
+            # Create event with timestamp and metadata
+            event_data = {
+                'type': event.value,
+                'timestamp': datetime.utcnow().isoformat(),
+                'metadata': metadata or {}
+            }
+            
+            # Add event to tracking
+            self.events.append(event_data)
+            
+            # Update status based on event
+            if event == EventType.SENT:
+                self.status = 'sent'
+            elif event == EventType.DELIVERED:
+                self.status = 'delivered'
+            elif event == EventType.OPENED:
+                self.status = 'opened'
+                self.open_count = (self.open_count or 0) + 1
+            elif event == EventType.CLICKED:
+                self.status = 'clicked'
+                self.click_count = (self.click_count or 0) + 1
+            elif event == EventType.FAILED:
+                self.status = 'failed'
+                
+            db.session.commit()
+            
+        except Exception as e:
+            logger.error(f"Error tracking event: {str(e)}")
+            db.session.rollback()
+            raise
 
     def update_client_info(self, user_agent, ip_address):
-        # TODO: Implement user agent parsing and IP geolocation
-        self.user_agent = user_agent
-        self.ip_address = ip_address
-        db.session.commit()
+        """Update client information with enhanced security and tracking"""
+        try:
+            from user_agents import parse
+            from geoip2.database import Reader
+            from src.config import Config
+            import hashlib
+            
+            # Parse user agent
+            ua = parse(user_agent)
+            self.user_agent = user_agent
+            self.browser = f"{ua.browser.family} {ua.browser.version_string}"
+            self.os = f"{ua.os.family} {ua.os.version_string}"
+            self.device = ua.device.family
+            
+            # Hash IP for privacy
+            self.ip_hash = hashlib.sha256(ip_address.encode()).hexdigest()
+            
+            # Geolocate IP if database exists
+            try:
+                with Reader(Config.GEOIP_DB_PATH) as reader:
+                    response = reader.city(ip_address)
+                    self.country = response.country.name
+                    self.city = response.city.name
+                    self.timezone = response.location.time_zone
+            except Exception as e:
+                logger.warning(f"GeoIP lookup failed: {str(e)}")
+            
+            db.session.commit()
+            
+        except Exception as e:
+            logger.error(f"Error updating client info: {str(e)}")
+            self.user_agent = user_agent
+            self.ip_address = ip_address
+            db.session.commit()
 
     @staticmethod
     def generate_message_id():
-        # TODO: Implement secure message ID generation
-        return f"msg_{datetime.utcnow().timestamp()}_{id(datetime.utcnow())}"
+        """Generate a secure, unique message ID"""
+        import secrets
+        import time
+        import base64
+        
+        # Generate 16 bytes of random data
+        random_bytes = secrets.token_bytes(16)
+        # Add timestamp for uniqueness
+        timestamp = int(time.time()).to_bytes(8, 'big')
+        # Combine and encode
+        combined = timestamp + random_bytes
+        # URL-safe base64 encoding
+        message_id = base64.urlsafe_b64encode(combined).decode('ascii')
+        return f"msg_{message_id}"
 
     @staticmethod
     def generate_tracking_id():
-        # TODO: Implement secure tracking ID generation
-        return f"trk_{datetime.utcnow().timestamp()}_{id(datetime.utcnow())}" 
+        """Generate a secure, unique tracking ID"""
+        import secrets
+        import time
+        import base64
+        import hashlib
+        
+        # Generate 32 bytes of random data
+        random_bytes = secrets.token_bytes(32)
+        # Add timestamp for uniqueness
+        timestamp = int(time.time()).to_bytes(8, 'big')
+        # Combine and hash
+        combined = timestamp + random_bytes
+        hash_obj = hashlib.sha256(combined)
+        # URL-safe base64 encoding of first 16 bytes of hash
+        tracking_id = base64.urlsafe_b64encode(hash_obj.digest()[:16]).decode('ascii')
+        return f"trk_{tracking_id}"
+
+    def to_dict(self):
+        """Convert tracking data to dictionary with sensitive data removed"""
+        return {
+            'id': self.id,
+            'template_id': self.template_id,
+            'status': self.status,
+            'events': self.events,
+            'open_count': self.open_count,
+            'click_count': self.click_count,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'browser': self.browser,
+            'os': self.os,
+            'device': self.device,
+            'country': self.country,
+            'city': self.city,
+            'timezone': self.timezone
+        } 

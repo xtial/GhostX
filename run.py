@@ -38,7 +38,7 @@ def configure_environment(mode):
         os.environ['FLASK_DEBUG'] = 'False'
         os.environ['PORT'] = os.getenv('PROD_PORT', '80')
         os.environ['HOST'] = os.getenv('PROD_HOST', '0.0.0.0')
-        os.environ['DOMAIN'] = os.getenv('DOMAIN', 'localhost')
+        os.environ['DOMAIN'] = os.getenv('DOMAIN')
         os.environ['DOMAIN_SCHEME'] = os.getenv('DOMAIN_SCHEME', 'http')
 
 def main():

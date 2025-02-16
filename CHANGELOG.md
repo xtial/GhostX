@@ -5,7 +5,44 @@ All notable changes to GhostX will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2024-03-XX
+
+### Added
+- Rate limiting functionality in admin dashboard
+  - Added reset rate limits button in admin interface
+  - Added visual feedback for rate limit operations
+  - Implemented rate limit reset endpoint
+- Enhanced security monitoring
+  - Real-time rate limit status display
+  - Improved error handling and user feedback
+- New utility functions for notifications and API requests
+- Dark mode support in admin interface
+
+### Changed
+- Reorganized admin dashboard JavaScript code
+  - Moved shared functions to utils.js
+  - Improved modular structure
+- Enhanced admin interface styling
+  - Updated notification system
+  - Improved responsive design
+  - Added new security card components
+- Improved error handling across all admin endpoints
+
+### Fixed
+- Fixed duplicate `RegistrationAttempt` model definition
+- Resolved CSRF token handling in admin API requests
+- Fixed rate limit reset functionality
+- Improved error messages and status updates
+
+## [1.0.0] - Initial Release
+
+### Features
+- User authentication and authorization
+- Admin dashboard
+- Email template management
+- Security monitoring
+- User management
+- Rate limiting
 
 ### Added
 - Poetry package management integration
@@ -35,26 +72,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added rate limiting for API endpoints
 - Improved CSRF protection
 - Secure configuration handling
-
-## [1.0.0] - 2024-03-XX
-
-### Added
-- Initial release of GhostX
-- Email template management system
-- User authentication and authorization
-- Campaign analytics and tracking
-- API endpoints for email operations
-- Database migrations system
-- Logging and monitoring features
-- Basic security features
-
-### Dependencies
-- Python 3.13+
-- Flask framework
-- SQLAlchemy ORM
-- Waitress WSGI server
-- Poetry package manager
-- Various Flask extensions
 
 [Unreleased]: https://github.com/yourusername/GhostX/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/yourusername/GhostX/releases/tag/v1.0.0 

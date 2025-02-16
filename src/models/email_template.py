@@ -19,24 +19,32 @@ class EmailTemplate(db.Model):
     html_content = db.Column(db.Text, nullable=False)
     text_content = db.Column(db.Text)  # Plain text fallback
     
+    # Template Variables and Blocks
+    variables = db.Column(db.JSON, default=dict)
+    conditional_blocks = db.Column(db.JSON, default=dict)
+    
+    # Version Control
+    version = db.Column(db.Integer, default=1)
+    parent_id = db.Column(db.Integer, db.ForeignKey('email_templates.id'))
+    is_latest = db.Column(db.Boolean, default=True)
+    
     # Template Settings
     is_active = db.Column(db.Boolean, default=True)
     is_public = db.Column(db.Boolean, default=False)
     is_system = db.Column(db.Boolean, default=False)
     
-    # Dynamic Content
-    variables = db.Column(db.JSON)  # Store variable definitions
-    conditional_blocks = db.Column(db.JSON)  # Store conditional logic
-    
-    # Spam Score
-    spam_score = db.Column(db.Float)
-    spam_report = db.Column(db.JSON)
+    # Bounce Tracking
+    bounce_count = db.Column(db.Integer, default=0)
+    last_bounce = db.Column(db.DateTime)
+    bounce_reasons = db.Column(db.JSON)
     
     # Template Stats
     use_count = db.Column(db.Integer, default=0)
     success_rate = db.Column(db.Float, default=0.0)
     open_rate = db.Column(db.Float, default=0.0)
     click_rate = db.Column(db.Float, default=0.0)
+    spam_score = db.Column(db.Float, default=0.0)
+    spam_report = db.Column(db.JSON, default=dict)
     
     # Validation Status
     is_validated = db.Column(db.Boolean, default=False)
@@ -48,13 +56,61 @@ class EmailTemplate(db.Model):
     
     # Relationships
     user = db.relationship('User', backref=db.backref('templates', lazy=True))
+    versions = db.relationship('EmailTemplate', 
+                             backref=db.backref('parent', remote_side=[id]),
+                             lazy='dynamic')
 
     def __init__(self, **kwargs):
+        # Initialize JSON fields with default empty dictionaries
+        kwargs.setdefault('variables', {})
+        kwargs.setdefault('conditional_blocks', {})
+        kwargs.setdefault('validation_errors', {})
+        kwargs.setdefault('spam_report', {})
+        kwargs.setdefault('bounce_reasons', {})
         super(EmailTemplate, self).__init__(**kwargs)
-        self.variables = self.variables or {}
-        self.conditional_blocks = self.conditional_blocks or {}
-        self.validation_errors = self.validation_errors or {}
-        self.spam_report = self.spam_report or {}
+
+    def create_new_version(self, html_content: str, subject: str = None) -> 'EmailTemplate':
+        """Create a new version of this template"""
+        # Set current version as not latest
+        self.is_latest = False
+        db.session.flush()
+        
+        # Create new version
+        new_version = EmailTemplate(
+            user_id=self.user_id,
+            name=self.name,
+            description=self.description,
+            subject=subject or self.subject,
+            html_content=html_content,
+            version=self.version + 1,
+            parent_id=self.id,
+            is_latest=True
+        )
+        
+        db.session.add(new_version)
+        db.session.commit()
+        return new_version
+
+    def record_bounce(self, reason: str = None):
+        """Record a bounce for this template"""
+        self.bounce_count += 1
+        self.last_bounce = datetime.utcnow()
+        
+        if reason:
+            if not self.bounce_reasons:
+                self.bounce_reasons = {}
+            self.bounce_reasons[reason] = self.bounce_reasons.get(reason, 0) + 1
+        
+        db.session.commit()
+
+    def get_bounce_stats(self) -> Dict:
+        """Get bounce statistics for this template"""
+        return {
+            'total_bounces': self.bounce_count,
+            'last_bounce': self.last_bounce.isoformat() if self.last_bounce else None,
+            'bounce_reasons': self.bounce_reasons or {},
+            'bounce_rate': (self.bounce_count / self.use_count) if self.use_count > 0 else 0
+        }
 
     def validate(self) -> bool:
         """Validate template HTML, links, and structure"""

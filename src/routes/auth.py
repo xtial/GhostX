@@ -2,11 +2,13 @@ from flask import Blueprint, request, jsonify, session, redirect, url_for, rende
 from flask_wtf.csrf import generate_csrf, CSRFProtect, CSRFError
 from flask_login import login_required, current_user, login_user, logout_user
 from src.models import db, User
+from src.models.registration_attempt import RegistrationAttempt
 from src.utils import is_password_strong, sanitize_input, validate_username
 from src.utils.rate_limiter import limiter
 from datetime import datetime
 from functools import wraps
 import logging
+import hashlib
 
 logger = logging.getLogger(__name__)
 auth = Blueprint('auth', __name__)
@@ -114,80 +116,120 @@ def register_page():
         logger.error(f"Error in register page: {str(e)}")
         return render_template('register.html', csrf_token=generate_csrf(), error="An error occurred. Please try again.")
 
+def generate_browser_fingerprint():
+    """Generate a simple browser fingerprint from request headers"""
+    user_agent = request.headers.get('User-Agent', '')
+    accept_lang = request.headers.get('Accept-Language', '')
+    platform = request.headers.get('Sec-Ch-Ua-Platform', '')
+    
+    # Create a unique fingerprint from available data
+    fingerprint_data = f"{user_agent}|{accept_lang}|{platform}"
+    return hashlib.sha256(fingerprint_data.encode()).hexdigest()
+
 @auth.route('/api/register', methods=['POST'])
 @limiter.limit("5/hour")
 def register():
+    """Register a new user account"""
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({'success': False, 'message': 'No data provided'}), 400
+        
+        # Get client information
+        ip_address = request.remote_addr
+        browser_fingerprint = generate_browser_fingerprint()
+        user_agent = request.headers.get('User-Agent', '')
 
-        username = sanitize_input(data.get('username', ''))
-        password = data.get('password', '')
-        confirm_password = data.get('confirm_password', '')
+        # Check registration limits
+        allowed, reason = RegistrationAttempt.check_limits(ip_address, browser_fingerprint)
+        if not allowed:
+            # Record failed attempt
+            RegistrationAttempt.record_attempt(
+                ip_address=ip_address,
+                browser_fingerprint=browser_fingerprint,
+                user_agent=user_agent,
+                username=data.get('username'),
+                success=False
+            )
+            return jsonify({
+                'success': False,
+                'message': reason
+            }), 429
+
+        # Validate required fields
+        required_fields = ['username', 'password']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'message': f'{field.title()} is required'
+                }), 400
+
+        username = sanitize_input(data['username'])
+        password = data['password']
+        email = sanitize_input(data.get('email', ''))  # Optional email
 
         # Validate username
-        if not username or not validate_username(username):
+        if not validate_username(username):
             return jsonify({
-                'success': False, 
-                'message': 'Username must be 3-20 characters long and contain only letters, numbers, and underscores'
+                'success': False,
+                'message': 'Invalid username format'
             }), 400
 
         # Check if username exists
-        if User.query.filter(User.username.ilike(username)).first():
-            return jsonify({
-                'success': False, 
-                'message': 'Username already exists'
-            }), 409
-
-        # Validate password
-        if not password or not confirm_password:
+        if User.query.filter_by(username=username).first():
             return jsonify({
                 'success': False,
-                'message': 'Password is required'
+                'message': 'Username already exists'
             }), 400
 
-        if password != confirm_password:
+        # Check if email exists (only if provided)
+        if email and User.query.filter_by(email=email).first():
             return jsonify({
-                'success': False, 
-                'message': 'Passwords do not match'
+                'success': False,
+                'message': 'Email already registered'
             }), 400
 
+        # Validate password strength
         if not is_password_strong(password):
             return jsonify({
-                'success': False, 
-                'message': 'Password must be at least 8 characters and contain uppercase, lowercase, numbers, and special characters'
+                'success': False,
+                'message': 'Password is not strong enough'
             }), 400
 
         # Create new user
         user = User(
             username=username,
-            join_date=datetime.utcnow(),
-            registration_ip=request.remote_addr,
-            last_login_ip=request.remote_addr,
-            last_login_date=datetime.utcnow()
+            email=email if email else None
         )
         user.set_password(password)
         
         db.session.add(user)
         db.session.commit()
 
+        # Record successful registration
+        RegistrationAttempt.record_attempt(
+            ip_address=ip_address,
+            browser_fingerprint=browser_fingerprint,
+            user_agent=user_agent,
+            username=username,
+            email=email if email else None,
+            success=True
+        )
+
         # Log in the new user
-        login_user(user, remember=True)
-        
-        logger.info(f"New user registered: {username} from IP: {request.remote_addr}")
-        
+        login_user(user)
+
         return jsonify({
             'success': True,
+            'message': 'Account created successfully',
             'redirect': url_for('main.dashboard')
-        }), 201
+        })
 
     except Exception as e:
-        logger.error(f"Registration error: {str(e)}")
         db.session.rollback()
+        logger.error(f"Error in registration: {str(e)}")
         return jsonify({
-            'success': False, 
-            'message': 'Registration failed. Please try again.'
+            'success': False,
+            'message': 'Registration failed. Please try again later.'
         }), 500
 
 @auth.route('/api/login', methods=['POST'])

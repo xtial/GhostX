@@ -812,52 +812,89 @@ function updateUsersChart(data) {
 }
 
 // Toggle user status
-async function toggleUserStatus(userId, active) {
-    try {
-        const response = await fetch('/api/admin/user/toggle-status', fetchOptions('POST', {
+async function toggleUserStatus(userId, currentStatus) {
+    const newStatus = !currentStatus;
+    
+    fetch('/api/admin/user/toggle-status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ 
             user_id: userId,
-            active: active
-        }));
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showNotification(data.message, 'success');
-            loadUsers();
-            loadStats();
-        } else {
-            throw new Error(data.message);
+            active: newStatus 
+        }),
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || `HTTP error! status: ${response.status}`);
+            });
         }
-    } catch (error) {
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            const statusButton = document.querySelector(`[data-user-id="${userId}"] .status-toggle`);
+            if (statusButton) {
+                statusButton.textContent = newStatus ? 'Deactivate' : 'Activate';
+                statusButton.classList.toggle('warning', newStatus);
+                statusButton.classList.toggle('success', !newStatus);
+            }
+            showNotification('success', data.message);
+        } else {
+            throw new Error(data.message || 'Failed to update user status');
+        }
+    })
+    .catch(error => {
         console.error('Error toggling user status:', error);
-        showNotification(error.message || 'Failed to update user status', 'error');
-    }
+        showNotification('error', error.message);
+    });
 }
 
 // Delete user
-async function deleteUser(userId) {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+async function deleteUser(userId, username) {
+    if (!confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
         return;
     }
-    
-    try {
-        const response = await fetch('/api/admin/user/delete', fetchOptions('POST', {
-            user_id: userId
-        }));
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showNotification(data.message, 'success');
-            loadUsers();
-            loadStats();
-        } else {
-            throw new Error(data.message);
+
+    fetch('/api/admin/user/delete', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ user_id: userId }),
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || `HTTP error! status: ${response.status}`);
+            });
         }
-    } catch (error) {
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            const userCard = document.querySelector(`[data-user-id="${userId}"]`);
+            if (userCard) {
+                userCard.remove();
+            }
+            showNotification('success', 'User deleted successfully');
+            if (typeof loadUsers === 'function') {
+                loadUsers();
+            }
+        } else {
+            throw new Error(data.message || 'Failed to delete user');
+        }
+    })
+    .catch(error => {
         console.error('Error deleting user:', error);
-        showNotification(error.message || 'Failed to delete user', 'error');
-    }
+        showNotification('error', error.message);
+    });
 }
 
 // Save settings
@@ -2075,7 +2112,7 @@ function createUserCard(user) {
                         onclick="toggleUserStatus(${user.id}, ${!user.active})">
                     ${user.active ? 'Disable' : 'Enable'}
                 </button>
-                <button class="auth-button danger" onclick="deleteUser(${user.id})">
+                <button class="auth-button danger" onclick="deleteUser(${user.id}, '${user.username}')">
                     Delete
                 </button>
             </div>
@@ -2100,5 +2137,47 @@ function createUserCard(user) {
         console.error('Error creating user card:', error);
         showNotification('Failed to create user card', 'error');
         return null;
+    }
+}
+
+// Rate Limits Functions
+async function resetRateLimits() {
+    if (!confirm('Are you sure you want to reset all rate limits? This will clear all registration attempt records.')) {
+        return;
+    }
+
+    const statusElement = document.getElementById('rate-limits-status');
+    statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting rate limits...';
+    statusElement.className = 'status-message info';
+
+    try {
+        const response = await fetch('/api/admin/rate-limits/reset', fetchOptions('POST'));
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        }
+
+        if (data.success) {
+            statusElement.innerHTML = '<i class="fas fa-check"></i> ' + data.message;
+            statusElement.className = 'status-message success';
+            
+            // Refresh security metrics if available
+            if (typeof updateSecurityMetrics === 'function') {
+                updateSecurityMetrics();
+            }
+            
+            // Auto-hide success message after 5 seconds
+            setTimeout(() => {
+                statusElement.innerHTML = '';
+                statusElement.className = 'status-message';
+            }, 5000);
+        } else {
+            throw new Error(data.message || 'Failed to reset rate limits');
+        }
+    } catch (error) {
+        statusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + error.message;
+        statusElement.className = 'status-message error';
+        console.error('Error resetting rate limits:', error);
     }
 } 

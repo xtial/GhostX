@@ -15,4 +15,9 @@ psycopg2-binary>=2.9.9
 redis>=5.0.1
 pillow>=10.1.0
 pydantic>=2.5.2
-click>=8.1.7 
+click>=8.1.7
+cachelib>=0.10.2 
+flask-caching>=2.3.0
+sentry_sdk
+prometheus_client
+statsd

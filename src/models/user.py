@@ -138,7 +138,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    email = db.Column(db.String(120), unique=True)
+    email = db.Column(db.String(120), unique=True, nullable=True)
     role = db.Column(db.String(20), default=UserRole.USER.value)
     
     # Email Usage Tracking
@@ -151,8 +151,7 @@ class User(UserMixin, db.Model):
     last_hourly_reset_time = db.Column(db.DateTime)
     last_daily_reset_time = db.Column(db.DateTime)
     
-    # Campaign and Template Stats
-    total_campaigns = db.Column(db.Integer, default=0)
+    # Template Stats
     total_templates = db.Column(db.Integer, default=0)
     total_opens = db.Column(db.Integer, default=0)
     total_clicks = db.Column(db.Integer, default=0)
@@ -304,7 +303,6 @@ class User(UserMixin, db.Model):
             'successful_emails': self.successful_emails,
             'failed_emails': self.failed_emails,
             'success_rate': (self.successful_emails / self.email_count * 100) if self.email_count > 0 else 0,
-            'total_campaigns': self.total_campaigns,
             'total_templates': self.total_templates,
             'total_opens': self.total_opens,
             'total_clicks': self.total_clicks,

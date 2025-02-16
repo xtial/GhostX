@@ -65,6 +65,32 @@ Client Support:
 - 🛡️ Security Logging
 - 🌐 API Access Control
 
+- **Advanced Rate Limiting**
+  - Configurable rate limits per user role
+  - Admin controls for rate limit management
+  - Real-time rate limit monitoring
+  - Rate limit reset functionality
+
+- **Security Features**
+  - Real-time security monitoring
+  - Session management
+  - IP-based rate limiting
+  - CSRF protection
+  - Secure authentication
+
+- **Admin Dashboard**
+  - User management
+  - Template management
+  - Security monitoring
+  - Rate limit controls
+  - Dark mode support
+
+- **Email Management**
+  - Template-based email system
+  - Campaign tracking
+  - Analytics dashboard
+  - Custom template support
+
 ## Requirements
 
 - Python 3.13+

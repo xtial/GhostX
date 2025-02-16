@@ -1,20 +1,37 @@
 // Notification System
-export function showNotification(message, type = 'info') {
+export function showNotification(message, type = 'info', duration = 3000) {
     const notifications = document.getElementById('notifications');
+    if (!notifications) {
+        console.error('Notifications container not found');
+        return;
+    }
+
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
-    notification.innerHTML = `
-        <i class="fas ${getNotificationIcon(type)}"></i>
-        <span>${message}</span>
-    `;
+    
+    const icon = document.createElement('i');
+    icon.className = `fas fa-${type === 'success' ? 'check-circle' : 
+                             type === 'error' ? 'exclamation-circle' : 
+                             type === 'warning' ? 'exclamation-triangle' : 'info-circle'}`;
+    
+    const textSpan = document.createElement('span');
+    textSpan.textContent = message;
+    
+    notification.appendChild(icon);
+    notification.appendChild(textSpan);
     
     notifications.appendChild(notification);
     
-    // Auto remove after 5 seconds
+    // Animate in
+    notification.style.animation = 'slideIn 0.3s ease-out forwards';
+    
+    // Auto remove after duration
     setTimeout(() => {
-        notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 300);
-    }, 5000);
+        notification.style.animation = 'slideOut 0.3s ease-in forwards';
+        setTimeout(() => {
+            notifications.removeChild(notification);
+        }, 300);
+    }, duration);
 }
 
 // Helper function to get notification icon

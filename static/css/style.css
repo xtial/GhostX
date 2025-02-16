@@ -2873,4 +2873,11 @@ body.dark-theme .preview-pane {
 .security-header h3:hover {
     animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
     text-shadow: 0 0 10px var(--accent);
+}
+
+.grid-background {
+    background-image: 
+        linear-gradient(to right, rgba(200, 200, 200, 0.1) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(200, 200, 200, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
 } 

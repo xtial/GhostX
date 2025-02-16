@@ -309,41 +309,14 @@
             once: true
         });
 
-        // Theme Toggle
-        const themeToggle = document.getElementById('themeToggle');
-        const body = document.body;
-
-        themeToggle.addEventListener('click', () => {
-            body.classList.toggle('dark-theme');
-            const isDark = body.classList.contains('dark-theme');
-            themeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        });
-
-        // Load saved theme
-        if (localStorage.getItem('theme') === 'dark') {
-            body.classList.add('dark-theme');
-            themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-        }
-
-        // Mobile Menu
-        const mobileMenu = document.getElementById('mobileMenu');
-        const navLinks = document.querySelector('.nav-links');
-
-        mobileMenu.addEventListener('click', () => {
-            navLinks.classList.toggle('active');
-            mobileMenu.innerHTML = navLinks.classList.contains('active') ? 
-                '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
-        });
-
-        // Animate Stats
-        const stats = document.querySelectorAll('.stat-number');
+        // Stats Animation
         const animateStats = () => {
+            const stats = document.querySelectorAll('.stat-number');
             stats.forEach(stat => {
-                const target = parseInt(stat.dataset.count);
+                const target = parseInt(stat.getAttribute('data-count'));
                 const duration = 2000;
-                const increment = target / (duration / 16);
                 let current = 0;
+                const increment = target / (duration / 16);
 
                 const updateStat = () => {
                     current += increment;
@@ -360,78 +333,91 @@
         };
 
         // Start animation when stats are in view
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    animateStats();
-                    observer.unobserve(entry.target);
-                }
+        const statsSection = document.querySelector('.hero-stats');
+        if (statsSection) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        animateStats();
+                        observer.unobserve(entry.target);
+                    }
+                });
             });
-        });
-
-        document.querySelector('.hero-stats').forEach(stat => observer.observe(stat));
-
-        // FAQ Toggle Function
-        function toggleFAQ(question) {
-            const answer = question.nextElementSibling;
-            const icon = question.querySelector('i');
-            const allAnswers = document.querySelectorAll('.faq-answer');
-            const allIcons = document.querySelectorAll('.faq-question i');
             
-            // Close all other answers
+            observer.observe(statsSection);
+        }
+
+        // Theme Toggle
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-theme');
+                const isDark = document.body.classList.contains('dark-theme');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                themeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            });
+        }
+
+        // Mobile Menu
+        const mobileMenu = document.getElementById('mobileMenu');
+        const navLinks = document.querySelector('.nav-links');
+        if (mobileMenu && navLinks) {
+            mobileMenu.addEventListener('click', () => {
+                navLinks.classList.toggle('active');
+                mobileMenu.innerHTML = navLinks.classList.contains('active') ? 
+                    '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+            });
+        }
+
+        // FAQ Toggle
+        function toggleFAQ(element) {
+            const answer = element.nextElementSibling;
+            const allAnswers = document.querySelectorAll('.faq-answer');
+            const allQuestions = document.querySelectorAll('.faq-question');
+            
             allAnswers.forEach(item => {
                 if (item !== answer) {
                     item.style.maxHeight = null;
                 }
             });
             
-            // Reset all icons
-            allIcons.forEach(item => {
-                if (item !== icon) {
-                    item.className = 'fas fa-chevron-down';
+            allQuestions.forEach(item => {
+                if (item !== element) {
+                    item.classList.remove('active');
                 }
             });
             
-            // Toggle current answer
+            element.classList.toggle('active');
+            
             if (answer.style.maxHeight) {
                 answer.style.maxHeight = null;
-                icon.className = 'fas fa-chevron-down';
             } else {
-                answer.style.maxHeight = answer.scrollHeight + 'px';
-                icon.className = 'fas fa-chevron-up';
+                answer.style.maxHeight = answer.scrollHeight + "px";
             }
         }
 
-        // Template Categories
-        document.querySelectorAll('.category-button').forEach(button => {
-            button.addEventListener('click', () => {
-                const category = button.dataset.category;
-                
-                // Update active button
-                document.querySelectorAll('.category-button').forEach(btn => 
-                    btn.classList.remove('active'));
-                button.classList.add('active');
-                
-                // Filter templates
-                document.querySelectorAll('.template-item').forEach(template => {
-                    if (category === 'all' || template.dataset.category === category) {
-                        template.style.display = 'block';
-                    } else {
-                        template.style.display = 'none';
-                    }
+        // Template Category Filter
+        const categoryButtons = document.querySelectorAll('.category-button');
+        const templateItems = document.querySelectorAll('.template-item');
+        
+        if (categoryButtons.length > 0 && templateItems.length > 0) {
+            categoryButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const category = button.getAttribute('data-category');
+                    
+                    categoryButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    
+                    templateItems.forEach(item => {
+                        if (category === 'all' || item.getAttribute('data-category') === category) {
+                            item.style.display = 'block';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
                 });
             });
-        });
-
-        // Smooth Scrolling
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                document.querySelector(this.getAttribute('href')).scrollIntoView({
-                    behavior: 'smooth'
-                });
-            });
-        });
+        }
     </script>
 </body>
 </html> 

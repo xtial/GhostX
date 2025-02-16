@@ -1,5 +1,36 @@
 import { showNotification, apiRequest } from './utils.js';
 
+// Chart update function
+async function updateCharts() {
+    try {
+        const response = await fetch('/api/stats/charts');
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update stats in the UI
+            const emailCount = document.getElementById('emailCount');
+            const successRate = document.getElementById('successRate');
+            const successProgress = document.getElementById('successProgress');
+            
+            if (emailCount) emailCount.textContent = data.stats.total;
+            if (successRate) {
+                const rate = data.stats.successRate;
+                successRate.textContent = `${rate}%`;
+                if (successProgress) {
+                    successProgress.style.width = `${rate}%`;
+                }
+            }
+            
+            showNotification('Statistics updated successfully', 'success');
+        } else {
+            throw new Error(data.message || 'Failed to update statistics');
+        }
+    } catch (error) {
+        console.error('Error updating statistics:', error);
+        showNotification('Failed to update statistics', 'error');
+    }
+}
+
 // Initialize tooltips
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize Tippy.js tooltips
@@ -12,18 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initialize Ace Editor if element exists
-    const editor = document.getElementById('template-editor');
-    if (editor) {
-        const aceEditor = ace.edit('template-editor');
-        aceEditor.setTheme('ace/theme/monokai');
-        aceEditor.session.setMode('ace/mode/html');
-        aceEditor.setOptions({
-            enableBasicAutocompletion: true,
-            enableLiveAutocompletion: true,
-            enableSnippets: true,
-            showPrintMargin: false,
-            fontSize: '14px'
-        });
+    const editorElement = document.getElementById('htmlContent');
+    if (editorElement) {
+        window.editor = initializeAceEditor('htmlContent');
     }
 
     // Initialize template search and filters
@@ -33,7 +55,26 @@ document.addEventListener('DOMContentLoaded', () => {
         templateSearch.addEventListener('input', filterTemplates);
         templateFilter.addEventListener('change', filterTemplates);
     }
+
+    // Initialize form validation
+    const forms = document.querySelectorAll('form[data-validate]');
+    forms.forEach(form => {
+        form.addEventListener('submit', validateForm);
+    });
+
+    // Load initial data
+    loadStats();
+    loadTemplates();
+    
+    // Set up interval updates
+    setInterval(loadStats, 60000); // Update stats every minute
+
+    const refreshButton = document.getElementById('refreshStats');
+    if (refreshButton) {
+        refreshButton.addEventListener('click', updateCharts);
+    }
 });
+
 
 // Error handling
 window.onerror = function(msg, url, line) {
@@ -46,17 +87,18 @@ window.CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribu
 
 // Initialize Ace Editor
 let editor;
-const initializeAceEditor = () => {
-    editor = ace.edit("htmlContent");
-    editor.setTheme("ace/theme/monokai");
-    editor.session.setMode("ace/mode/html");
+const initializeAceEditor = (elementId) => {
+    editor = ace.edit(elementId);
+    editor.setTheme('ace/theme/monokai');
+    editor.session.setMode('ace/mode/html');
     editor.setOptions({
-        fontSize: "14px",
+        enableBasicAutocomplete: true,
+        enableLiveAutocompletion: true,
+        enableSnippets: true,
         showPrintMargin: false,
-        showGutter: true,
-        highlightActiveLine: true,
-        enableLiveAutocompletion: true
+        fontSize: '14px'
     });
+    return editor;
 };
 
 // Theme Toggle
@@ -221,47 +263,6 @@ async function handleCustomEmail(event) {
         showNotification(error.message || 'Failed to send email', 'error');
     }
 }
-
-// Load user data when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    // Load initial data
-    loadStats();
-    loadTemplates(); // Load templates first
-    
-    // Set up interval updates
-    setInterval(loadStats, 60000); // Update stats every minute
-    
-    // Add event listeners for modals
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
-    });
-    
-    // Initialize tooltips
-    tippy('[data-tippy-content]', {
-        placement: 'bottom',
-        animation: 'scale',
-        theme: 'custom'
-    });
-    
-    // Initialize template search and filters
-    const templateSearch = document.getElementById('templateSearch');
-    const templateFilter = document.getElementById('templateFilter');
-    if (templateSearch && templateFilter) {
-        templateSearch.addEventListener('input', filterTemplates);
-        templateFilter.addEventListener('change', filterTemplates);
-    }
-    
-    // Initialize editor if custom email section exists
-    const customEmailSection = document.getElementById('custom-email');
-    if (customEmailSection) {
-        initializeAceEditor();
-    }
-});
 
 // Load email templates with enhanced UI
 async function loadTemplates() {
@@ -845,3 +846,39 @@ window.filterTemplates = function filterTemplates() {
         card.style.opacity = (matchesSearch && matchesFilter && matchesFavorites) ? '1' : '0';
     });
 };
+
+// Form validation
+function validateForm(event) {
+    const form = event.target;
+    const inputs = form.querySelectorAll('input[pattern]');
+    
+    inputs.forEach(input => {
+        const pattern = input.getAttribute('pattern');
+        // Remove any flags from the pattern and escape special characters
+        const cleanPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(cleanPattern);
+        
+        if (!regex.test(input.value)) {
+            input.setCustomValidity('Please match the requested format');
+        } else {
+            input.setCustomValidity('');
+        }
+    });
+    
+    if (!form.checkValidity()) {
+        event.preventDefault();
+        showFormErrors(form);
+    }
+}
+
+// Show form errors
+function showFormErrors(form) {
+    const inputs = form.querySelectorAll('input:invalid');
+    inputs.forEach(input => {
+        const errorElement = input.nextElementSibling;
+        if (errorElement && errorElement.classList.contains('error-message')) {
+            errorElement.textContent = input.validationMessage;
+            errorElement.style.display = 'block';
+        }
+    });
+}

@@ -5,7 +5,8 @@ try:
     from src import create_app, db
     from src.models import (
         User, UserRole, Session, LoginAttempt, 
-        APIRequest, SecurityLog, EmailTemplate, Permission
+        APIRequest, SecurityLog, EmailTemplate, Permission,
+        RegistrationAttempt
     )
 except ModuleNotFoundError as e:
     print(f"Error: Missing required module - {str(e)}")
@@ -26,6 +27,8 @@ def cleanup_database():
         tables = inspector.get_table_names()
         
         # Drop tables in correct order
+        if 'registration_attempts' in tables:
+            RegistrationAttempt.__table__.drop(db.engine)
         if 'security_logs' in tables:
             SecurityLog.__table__.drop(db.engine)
         if 'api_requests' in tables:
@@ -152,7 +155,6 @@ def setup_db(remake):
                 last_daily_reset=datetime.now(timezone.utc),
                 successful_emails=0,
                 failed_emails=0,
-                total_campaigns=0,
                 total_templates=0,
                 total_opens=0,
                 total_clicks=0,

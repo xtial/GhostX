@@ -2,7 +2,11 @@
 
 import re
 import html
-from typing import Any, Union
+import logging
+from typing import Any, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from logging import Logger
 
 def sanitize_log(message: Any) -> str:
     """
@@ -81,7 +85,37 @@ def sanitize_log_context(context: dict) -> dict:
         for k, v in context.items()
     }
 
-def create_safe_logger(logger_name: str) -> 'SafeLogger':
+class SafeLogger:
+    def __init__(self, name: str):
+        self._logger = logging.getLogger(name)
+        
+    def _safe_log(self, level: int, msg: Any, *args, **kwargs):
+        safe_msg = sanitize_log(msg)
+        if kwargs.get('extra'):
+            kwargs['extra'] = sanitize_log_context(kwargs['extra'])
+        self._logger.log(level, safe_msg, *args, **kwargs)
+        
+    def debug(self, msg: Any, *args, **kwargs):
+        self._safe_log(logging.DEBUG, msg, *args, **kwargs)
+        
+    def info(self, msg: Any, *args, **kwargs):
+        self._safe_log(logging.INFO, msg, *args, **kwargs)
+        
+    def warning(self, msg: Any, *args, **kwargs):
+        self._safe_log(logging.WARNING, msg, *args, **kwargs)
+        
+    def error(self, msg: Any, *args, **kwargs):
+        self._safe_log(logging.ERROR, msg, *args, **kwargs)
+        
+    def critical(self, msg: Any, *args, **kwargs):
+        self._safe_log(logging.CRITICAL, msg, *args, **kwargs)
+
+    def exception(self, msg: Any, *args, exc_info=True, **kwargs):
+        """Log an exception with traceback."""
+        kwargs['exc_info'] = exc_info
+        self._safe_log(logging.ERROR, msg, *args, **kwargs)
+
+def create_safe_logger(logger_name: str) -> SafeLogger:
     """
     Create a logger wrapper that automatically sanitizes all messages.
     
@@ -91,31 +125,4 @@ def create_safe_logger(logger_name: str) -> 'SafeLogger':
     Returns:
         SafeLogger: A logger that automatically sanitizes messages
     """
-    import logging
-    
-    class SafeLogger:
-        def __init__(self, name: str):
-            self._logger = logging.getLogger(name)
-            
-        def _safe_log(self, level: int, msg: Any, *args, **kwargs):
-            safe_msg = sanitize_log(msg)
-            if kwargs.get('extra'):
-                kwargs['extra'] = sanitize_log_context(kwargs['extra'])
-            self._logger.log(level, safe_msg, *args, **kwargs)
-            
-        def debug(self, msg: Any, *args, **kwargs):
-            self._safe_log(logging.DEBUG, msg, *args, **kwargs)
-            
-        def info(self, msg: Any, *args, **kwargs):
-            self._safe_log(logging.INFO, msg, *args, **kwargs)
-            
-        def warning(self, msg: Any, *args, **kwargs):
-            self._safe_log(logging.WARNING, msg, *args, **kwargs)
-            
-        def error(self, msg: Any, *args, **kwargs):
-            self._safe_log(logging.ERROR, msg, *args, **kwargs)
-            
-        def critical(self, msg: Any, *args, **kwargs):
-            self._safe_log(logging.CRITICAL, msg, *args, **kwargs)
-            
     return SafeLogger(logger_name) 
