@@ -92,11 +92,12 @@ def main():
     host = os.getenv('HOST')
     port = int(os.getenv('PORT'))
     
+    debug_mode = os.getenv('FLASK_DEBUG') == 'True'
     if mode == "1":  # Development
         print(f"\nStarting development server at http://{host}:{port}")
-        print("Debug mode: ON")
+        print(f"Debug mode: {'ON' if debug_mode else 'OFF'}")
         print("Press CTRL+C to stop")
-        app.run(host=host, port=port, debug=True)
+        app.run(host=host, port=port, debug=debug_mode)
     else:  # Production
         print(f"\nStarting production server at http://{os.getenv('DOMAIN')}")
         print("Debug mode: OFF")
