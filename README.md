@@ -2,6 +2,61 @@
 
 GhostX is a secure, feature-rich email management system built with Flask and modern Python practices.
 
+## ⚠️ Important: SMTP Requirements
+
+To use GhostX, you need a spoofable SMTP server. Standard SMTP servers won't work due to security measures like SPF, DKIM, and DMARC.
+
+### Recommended SMTP Provider
+- Get a spoofable SMTP from trusted providers (e.g., https://spamir.fr/shop?prod=smtps)
+
+### Email Security Overview
+1. **SPF**: Defines which servers can send emails for a domain
+2. **DKIM**: Adds digital signatures to verify sender authenticity
+3. **DMARC**: Combines SPF and DKIM checks for enhanced security
+
+### Spoofing Methods & Client Compatibility
+1. **Punycode Method** (Gmail)
+   - Using: coínbase.com
+   - Best for: International domain variants
+
+2. **Non-TLD Method** (All Clients)
+   - Using: help@coinbase
+   - Best for: Simple domain spoofing
+
+3. **Alternative TLD** (Most Clients)
+   - Using: service@coinbase.co
+   - Works when domain is unregistered
+
+4. **Subdirectory Method** (Gmail)
+   - Using: support@coinbase.com/help
+   - Best for: Complex domain structures
+
+Client Support:
+- Gmail: All methods
+- iCloud: Non-TLD, Alt-TLD
+- ProtonMail: Non-TLD, sometimes Alt-TLD
+- Yahoo: Sometimes Alt-TLD
+
+### Setup & Configuration
+1. Configure SMTP in `.env`:
+   ```
+   SMTP_HOST=your_smtp_host
+   SMTP_PORT=your_smtp_port
+   SMTP_USER=your_smtp_username
+   SMTP_PASS=your_smtp_password
+   ```
+2. Test configuration:
+   ```bash
+   python manage.py test_smtp
+   ```
+
+### Best Practices
+- Secure credential storage
+- Regular credential rotation
+- Monitor sending patterns
+- Space out sending intervals
+- Verify domain formats
+
 ## Features
 
 - 🔒 Secure Authentication System
@@ -155,113 +210,6 @@ For support, please open an issue in the GitHub repository or contact the mainta
 - Flask team for the amazing framework
 - SQLAlchemy team for the robust ORM
 - All contributors who have helped shape this project
-
-## 🌟 Features
-
-### 📧 Email Management
-- Custom email template creation and management
-- Real-time email tracking and analytics
-- Hourly and daily sending limits
-- Success rate monitoring
-- Template categorization and filtering
-
-### 🎨 User Interface
-- Modern, responsive design
-- Dark/Light theme toggle
-- Real-time statistics dashboard
-- Interactive template editor
-- Mobile-friendly interface
-
-### 🔒 Security Features
-- Secure user authentication
-- Session management
-- Rate limiting
-- CSRF protection
-- Password strength validation
-- Secure password hashing
-- IP tracking and monitoring
-
-### 📊 Analytics
-- Email success rates
-- Sending statistics
-- Usage tracking
-- Real-time monitoring
-- Performance metrics
-
-## 🚀 Quick Start
-
-1. Clone the repository:
-```bash
-git clone https://github.com/xtial/GhostX.git
-cd GhostX
-```
-
-2. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies with Poetry:
-```bash
-pip install poetry
-poetry install
-```
-
-4. Set up environment variables:
-```bash
-cp .env.template .env
-# Edit .env with your settings
-```
-
-5. Initialize the database:
-```bash
-poetry run python create_db.py --remake
-```
-
-6. Start the application:
-```bash
-poetry run python run.py
-```
-
-## 📖 Documentation
-
-- [API Documentation](docs/API.md)
-- [Development Guide](docs/DEVELOPMENT.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
-- [Contributing Guidelines](CONTRIBUTING.md)
-- [Security Policy](SECURITY.md)
-
-## 🛠️ Tech Stack
-
-- **Backend**: Python/Flask
-- **Database**: SQLAlchemy with SQLite/PostgreSQL
-- **Frontend**: HTML5, CSS3, JavaScript
-- **Security**: Flask-Login, Flask-WTF
-- **UI**: Font Awesome, Custom CSS Framework
-- **Code Quality**: Black, Flake8, MyPy
-- **Security Scanning**: Bandit, Safety
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License with additional terms - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [Flask](https://flask.palletsprojects.com/) for the web framework
-- [SQLAlchemy](https://www.sqlalchemy.org/) for the ORM
-- [Font Awesome](https://fontawesome.com/) for icons
-- All our [contributors](CONTRIBUTORS.md)
 
 ## 📫 Contact
 
