@@ -9,12 +9,34 @@ from datetime import timedelta
 import os
 import logging
 from logging.handlers import RotatingFileHandler
+from .utils.log_sanitizer import create_safe_logger
 
 # Initialize Flask extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
 csrf = CSRFProtect()
 session = Session()
+
+# Create logs directory if it doesn't exist
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        RotatingFileHandler(
+            'logs/app.log',
+            maxBytes=10000000,  # 10MB
+            backupCount=5
+        ),
+        logging.StreamHandler()
+    ]
+)
+
+# Create safe logger instance for the application
+logger = create_safe_logger('ghostx')
 
 def create_app(test_config=None):
     app = Flask(__name__,

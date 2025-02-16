@@ -1,18 +1,19 @@
-from flask import Blueprint, render_template, redirect, url_for, current_app, jsonify
+from flask import Blueprint, render_template, redirect, url_for, current_app, jsonify, request
 from flask_login import login_required, current_user
 from flask_wtf.csrf import generate_csrf
 from datetime import datetime, timedelta
 from src.config import MAX_EMAILS_PER_HOUR, MAX_EMAILS_PER_DAY
-from src.models import EmailTemplate
+from src.models import EmailTemplate, User
 from src.routes.auth import user_required
-import logging
+from .. import db, logger
+from ..utils.log_sanitizer import sanitize_user_data, sanitize_log
+from ..utils.security import login_required
 
-logger = logging.getLogger(__name__)
 main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
-    logger.debug("Accessing index route")
+    logger.info("Homepage accessed")
     if current_user.is_authenticated:
         logger.debug(f"User {current_user.username} is authenticated, redirecting to appropriate dashboard")
         if current_user.is_admin:
@@ -24,8 +25,13 @@ def index():
 @main.route('/dashboard')
 @user_required
 def dashboard():
-    logger.debug(f"Rendering dashboard for user {current_user.username}")
-    return render_template('dashboard.html', csrf_token=generate_csrf())
+    try:
+        user_id = sanitize_user_data(str(request.user_id))
+        logger.info(f"User {user_id} accessed dashboard")
+        return render_template('dashboard.html', csrf_token=generate_csrf())
+    except Exception as e:
+        logger.error(f"Error accessing dashboard: {sanitize_log(str(e))}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 @main.route('/api/limits')
 @login_required
@@ -52,7 +58,7 @@ def get_limits():
         })
         
     except Exception as e:
-        logger.error(f"Error getting user limits: {str(e)}")
+        logger.error(f"Error getting user limits: {sanitize_log(str(e))}")
         return jsonify({
             'success': False,
             'message': 'Failed to get email limits'
@@ -62,7 +68,9 @@ def get_limits():
 @login_required
 def get_templates():
     try:
-        templates = EmailTemplate.query.all()
+        user_id = sanitize_user_data(str(request.user_id))
+        templates = EmailTemplate.query.filter_by(user_id=request.user_id).all()
+        logger.info(f"User {user_id} retrieved their email templates. Count: {len(templates)}")
         return jsonify({
             'success': True,
             'templates': [{
@@ -73,7 +81,7 @@ def get_templates():
             } for template in templates]
         })
     except Exception as e:
-        logger.error(f"Error getting email templates: {str(e)}")
+        logger.error(f"Error retrieving templates: {sanitize_log(str(e))}")
         return jsonify({
             'success': False,
             'message': 'Failed to load templates'
@@ -100,8 +108,20 @@ def get_template(template_id):
             }
         })
     except Exception as e:
-        logger.error(f"Error getting email template: {str(e)}")
+        logger.error(f"Error getting email template: {sanitize_log(str(e))}")
         return jsonify({
             'success': False,
             'message': 'Failed to load template'
         }), 500 
+
+@main.route('/profile')
+@login_required
+def get_profile():
+    try:
+        user_id = sanitize_user_data(str(request.user_id))
+        user = User.query.get_or_404(request.user_id)
+        logger.info(f"User {user_id} accessed their profile")
+        return jsonify(user.to_dict())
+    except Exception as e:
+        logger.error(f"Error retrieving profile: {sanitize_log(str(e))}")
+        return jsonify({'error': 'Internal server error'}), 500 
