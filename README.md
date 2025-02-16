@@ -44,7 +44,7 @@ A modern, secure, and feature-rich email management system built with Flask and 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/GhostX.git
+git clone https://github.com/xtial/GhostX.git
 cd GhostX
 ```
 
@@ -91,7 +91,6 @@ poetry run python run.py
 - **Frontend**: HTML5, CSS3, JavaScript
 - **Security**: Flask-Login, Flask-WTF
 - **UI**: Font Awesome, Custom CSS Framework
-- **Testing**: Pytest, Coverage
 - **Code Quality**: Black, Flake8, MyPy
 - **Security Scanning**: Bandit, Safety
 

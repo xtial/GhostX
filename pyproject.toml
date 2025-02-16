@@ -48,17 +48,12 @@ pillow = "^10.0.0"
 pydantic = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.0"
-pytest-cov = "^4.1.0"
 black = "^23.9.0"
 flake8 = "^6.1.0"
 mypy = "^1.5.0"
 bandit = "^1.7.0"
 safety = "^2.3.0"
 pre-commit = "^3.4.0"
-pytest-mock = "^3.11.0"
-pytest-flask = "^1.2.0"
-faker = "^19.6.0"
 
 [tool.poetry.scripts]
 ghostx = "setup:run_server"
@@ -79,22 +74,4 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 warn_return_any = true
 warn_unreachable = true
-strict_optional = true
-
-[tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "-ra -q --cov=ghostx --cov-report=html"
-testpaths = ["tests"]
-
-[tool.coverage.run]
-source = ["ghostx"]
-omit = ["tests/*", "**/__init__.py"]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "if __name__ == .__main__.:",
-    "raise NotImplementedError",
-    "if TYPE_CHECKING:",
-] 
+strict_optional = true 
