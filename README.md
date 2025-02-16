@@ -45,10 +45,7 @@ Client Support:
    SMTP_USER=your_smtp_username
    SMTP_PASS=your_smtp_password
    ```
-2. Test configuration:
-   ```bash
-   python manage.py test_smtp
-   ```
+2. Test configuration by sending a test email from the admin dashboard.
 
 ### Best Practices
 - Secure credential storage
