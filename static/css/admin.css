@@ -690,62 +690,95 @@ body::before {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
     z-index: 1000;
-    animation: fadeIn 0.3s ease-out;
+    backdrop-filter: blur(5px);
 }
 
 .modal-content {
-    background-color: var(--card-bg);
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    border-radius: 8px;
     width: 90%;
-    max-width: 800px;
+    max-width: 1200px;
     max-height: 90vh;
-    overflow: hidden;
-    box-shadow: var(--glow-effect);
-    animation: slideIn 0.3s ease-out;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    animation: modalSlideIn 0.3s ease;
 }
 
 .modal-header {
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--border-color);
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .modal-header h3 {
-    color: var(--text-primary);
-    font-size: 1.25rem;
     margin: 0;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
 }
 
 .close-button {
     background: none;
     border: none;
     color: var(--text-secondary);
-    font-size: 1.5rem;
+    font-size: 24px;
     cursor: pointer;
-    padding: 4px;
-    line-height: 1;
-    transition: all 0.3s ease;
+    padding: 5px;
+    transition: color 0.3s ease;
 }
 
 .close-button:hover {
     color: var(--text-primary);
-    transform: scale(1.1);
 }
 
-.modal-body {
-    padding: 24px;
-    overflow-y: auto;
-    max-height: calc(90vh - 70px);
+/* Loading animation */
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--text-secondary);
+    gap: 15px;
+}
+
+.loading i {
+    font-size: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 @media (max-width: 768px) {
@@ -754,8 +787,13 @@ body::before {
         max-height: 95vh;
     }
     
-    .modal-body {
-        padding: 16px;
+    .preview-container.tablet,
+    .preview-container.desktop {
+        width: 100%;
+    }
+    
+    .preview-controls {
+        flex-wrap: wrap;
     }
 }
 
@@ -949,4 +987,68 @@ body::before {
 .status-toggle.success {
     background-color: #28a745;
     color: #fff;
+}
+
+.preview-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.preview-button {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s ease;
+}
+
+.preview-button:hover {
+    background: var(--hover-bg);
+    color: var(--text-primary);
+}
+
+.preview-button.active {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.preview-container {
+    background: white;
+    border-radius: 4px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.preview-container.desktop {
+    width: 100%;
+    height: 600px;
+}
+
+.preview-container.tablet {
+    width: 768px;
+    height: 1024px;
+    margin: 0 auto;
+}
+
+.preview-container.mobile {
+    width: 375px;
+    height: 667px;
+    margin: 0 auto;
+}
+
+.preview-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: white;
 } 

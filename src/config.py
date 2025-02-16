@@ -86,20 +86,20 @@ RATE_LIMITS = {
 
 # Redis Configuration
 REDIS_CONFIG = {
-    'host': 'redis-14704.c337.australia-southeast1-1.gce.redns.redis-cloud.com',
-    'port': 14704,
+    'host': os.getenv('REDIS_HOST', 'localhost'),
+    'port': int(os.getenv('REDIS_PORT', '6379')),
     'decode_responses': True,
-    'username': 'default',
-    'password': 'GxBvkdZUHBGuP64CINVu0K8LRj6HcPlz',
-    'db': 0,
+    'username': os.getenv('REDIS_USERNAME', 'default'),
+    'password': os.getenv('REDIS_PASSWORD'),
+    'db': int(os.getenv('REDIS_DB', '0')),
     'retry_on_timeout': True,
-    'socket_timeout': 10,
-    'ssl': True,
-    'ssl_cert_reqs': None
+    'socket_timeout': int(os.getenv('REDIS_SOCKET_TIMEOUT', '10')),
+    'ssl': os.getenv('REDIS_SSL', 'False').lower() == 'true',
+    'ssl_cert_reqs': None if os.getenv('REDIS_SSL_VERIFY', 'False').lower() == 'false' else 'required'
 }
 
-# Redis URL (for Flask-Limiter)
-REDIS_URL = "redis://:GxBvkdZUHBGuP64CINVu0K8LRj6HcPlz@redis-14704.c337.australia-southeast1-1.gce.redns.redis-cloud.com:14704/0"
+# Construct Redis URL from config
+REDIS_URL = f"redis://{':' + REDIS_CONFIG['password'] + '@' if REDIS_CONFIG['password'] else ''}{REDIS_CONFIG['host']}:{REDIS_CONFIG['port']}/{REDIS_CONFIG['db']}"
 
 # Monitoring Configuration
 MONITORING_CONFIG = {
@@ -117,8 +117,21 @@ class Config:
     """Application configuration class"""
     
     # Flask Configuration
-    SECRET_KEY = os.getenv('SECRET_KEY') or 'e04ace37fd2f049884adf1ccf304c5fbdc1b2dd86326662d211626b1f48e74bf'
-    WTF_CSRF_SECRET_KEY = SECRET_KEY
+    SECRET_KEY = os.getenv('SECRET_KEY')
+    if not SECRET_KEY:
+        # Generate a secure random key for development
+        import secrets
+        SECRET_KEY = secrets.token_hex(32)
+        
+    # CSRF Configuration
+    WTF_CSRF_SECRET_KEY = SECRET_KEY  # Use same secret key for CSRF
+    WTF_CSRF_ENABLED = os.getenv('CSRF_ENABLED', 'True').lower() == 'true'
+    WTF_CSRF_TIME_LIMIT = int(os.getenv('CSRF_TIME_LIMIT', '3600'))
+    WTF_CSRF_SSL_STRICT = os.getenv('CSRF_SSL_STRICT', 'True').lower() == 'true'
+    
+    # Debug and Testing
+    DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+    TESTING = os.getenv('TESTING', 'False').lower() == 'true'
     
     # Domain Configuration
     SERVER_NAME = os.getenv('DOMAIN', 'localhost')
@@ -144,8 +157,6 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax'
     
     # Security Configuration
-    WTF_CSRF_ENABLED = True
-    WTF_CSRF_TIME_LIMIT = SECURITY_CONFIG['csrf_token_timeout'] * 60
     SECURITY_CONFIG = SECURITY_CONFIG
     
     # Email Configuration
@@ -178,10 +189,50 @@ class Config:
     ENABLE_RATE_LIMITING = os.getenv('ENABLE_RATE_LIMITING', 'true').lower() == 'true'
     ENABLE_IP_BLOCKING = os.getenv('ENABLE_IP_BLOCKING', 'true').lower() == 'true'
     
+    # Registration Rate Limits
+    REGISTRATION_LIMITS = {
+        'hourly_per_ip': int(os.getenv('REGISTRATION_HOURLY_PER_IP', '3')),
+        'daily_per_ip': int(os.getenv('REGISTRATION_DAILY_PER_IP', '5')),
+        'monthly_per_ip': int(os.getenv('REGISTRATION_MONTHLY_PER_IP', '10')),
+        'daily_per_browser': int(os.getenv('REGISTRATION_DAILY_PER_BROWSER', '2'))
+    }
+
+    # API Rate Limits
+    API_RATE_LIMITS = {
+        'user': {
+            'hourly': int(os.getenv('API_RATE_LIMIT_USER_HOURLY', '20')),
+            'daily': int(os.getenv('API_RATE_LIMIT_USER_DAILY', '100')),
+            'concurrent': int(os.getenv('API_RATE_LIMIT_USER_CONCURRENT', '2'))
+        },
+        'premium': {
+            'hourly': int(os.getenv('API_RATE_LIMIT_PREMIUM_HOURLY', '50')),
+            'daily': int(os.getenv('API_RATE_LIMIT_PREMIUM_DAILY', '200')),
+            'concurrent': int(os.getenv('API_RATE_LIMIT_PREMIUM_CONCURRENT', '5'))
+        },
+        'admin': {
+            'hourly': int(os.getenv('API_RATE_LIMIT_ADMIN_HOURLY', '1000')),
+            'daily': int(os.getenv('API_RATE_LIMIT_ADMIN_DAILY', '5000')),
+            'concurrent': int(os.getenv('API_RATE_LIMIT_ADMIN_CONCURRENT', '10'))
+        }
+    }
+
+    # Authentication Rate Limits
+    AUTH_RATE_LIMITS = {
+        'max_attempts': int(os.getenv('AUTH_MAX_ATTEMPTS', '5')),
+        'lockout_duration': int(os.getenv('AUTH_LOCKOUT_DURATION', '900')),
+        'attempt_window': int(os.getenv('AUTH_ATTEMPT_WINDOW', '3600'))
+    }
+
+    # Admin Account
+    ADMIN_CONFIG = {
+        'username': os.getenv('ADMIN_USERNAME', 'admin'),
+        'password': os.getenv('ADMIN_PASSWORD', 'change-this-password')
+    }
+
     @classmethod
     def get_rate_limits(cls, role):
         """Get rate limits based on user role"""
-        return cls.RATE_LIMITS.get(role, cls.RATE_LIMITS['user'])
+        return cls.API_RATE_LIMITS.get(role, cls.API_RATE_LIMITS['user'])
         
     @staticmethod
     def init_app(app):
@@ -221,4 +272,23 @@ def update_email_limits(per_hour=None, per_day=None):
         Config.MAX_EMAILS_PER_HOUR = per_hour
     if per_day is not None:
         MAX_EMAILS_PER_DAY = per_day
-        Config.MAX_EMAILS_PER_DAY = per_day 
+        Config.MAX_EMAILS_PER_DAY = per_day
+
+class DevelopmentConfig(Config):
+    DEBUG = True
+    SQLALCHEMY_ECHO = True
+
+class TestingConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    WTF_CSRF_ENABLED = False
+
+class ProductionConfig(Config):
+    DEBUG = False
+    TESTING = False
+    SQLALCHEMY_ECHO = False
+    SESSION_COOKIE_SECURE = True
+
+    def __init__(self):
+        if not self.SECRET_KEY or self.SECRET_KEY == 'default-dev-key-change-in-production':
+            raise ValueError("Production SECRET_KEY must be set in environment") 

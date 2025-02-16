@@ -138,3 +138,82 @@ def favicon():
     except Exception as e:
         logger.error(f"Error serving favicon: {sanitize_log(str(e))}")
         return '', 404 
+
+@main.route('/api/templates/preview/<path:template_path>')
+@login_required
+def preview_template(template_path):
+    """Preview a specific email template"""
+    try:
+        # First try to find template in database
+        template = EmailTemplate.query.filter_by(name=template_path).first()
+        
+        if template:
+            html_content = template.html_content
+        else:
+            # If not in database, try to load from static files
+            # Construct the correct path to static/templates directory
+            template_name = template_path.rstrip('.html')
+            possible_paths = [
+                os.path.join('static', 'templates', f"{template_name}.html"),
+                os.path.join('static', 'templates', template_path)
+            ]
+            
+            template_file = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    template_file = path
+                    break
+                    
+            if not template_file:
+                logger.error(f"Template not found: {template_path}")
+                return jsonify({
+                    'success': False,
+                    'message': 'Template not found'
+                }), 404
+                
+            with open(template_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+        
+        # Add preview wrapper with styles
+        preview_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {{ 
+                    margin: 0; 
+                    padding: 20px; 
+                    background: #f4f7fa;
+                    font-family: Arial, sans-serif;
+                }}
+                .email-preview {{
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: #fff;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    padding: 20px;
+                    border-radius: 8px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="email-preview">
+                {html_content}
+            </div>
+        </body>
+        </html>
+        """
+            
+        return jsonify({
+            'success': True,
+            'html': preview_html,
+            'filename': template_path
+        })
+    except Exception as e:
+        logger.error(f"Error previewing template: {sanitize_log(str(e))}")
+        return jsonify({
+            'success': False,
+            'message': f'Failed to load template preview: {str(e)}'
+        }), 500 

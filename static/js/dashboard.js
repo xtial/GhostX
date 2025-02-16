@@ -518,109 +518,111 @@ async function useTemplate(templateFilename, senderInfo) {
 }
 
 async function previewTemplate(templateFilename) {
-    try {
-        console.log(`Previewing template: ${templateFilename}`);
-        
-        // Create modal immediately with loading state
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2><i class="fas fa-eye"></i> Template Preview</h2>
-                    <button class="close-button" onclick="this.closest('.modal').remove()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="loading-animation">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p>Loading Preview...</p>
-                    </div>
+    // Create modal immediately with loading state
+    const modal = document.createElement('div');
+    modal.className = 'preview-modal';
+    modal.innerHTML = `
+        <div class="preview-modal-content">
+            <div class="preview-modal-header">
+                <h3>Template Preview</h3>
+                <button class="close-button">&times;</button>
+            </div>
+            <div class="preview-controls">
+                <button class="preview-device-btn active" data-device="desktop">
+                    <i class="fas fa-desktop"></i> Desktop
+                </button>
+                <button class="preview-device-btn" data-device="tablet">
+                    <i class="fas fa-tablet-alt"></i> Tablet
+                </button>
+                <button class="preview-device-btn" data-device="mobile">
+                    <i class="fas fa-mobile-alt"></i> Mobile
+                </button>
+            </div>
+            <div class="preview-modal-body">
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <p>Loading preview...</p>
                 </div>
             </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-        const response = await fetch(`/static/templates/${templateFilename}`);
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add event listeners
+    const closeBtn = modal.querySelector('.close-button');
+    closeBtn.addEventListener('click', () => {
+        modal.remove();
+    });
+    
+    // Device preview controls
+    const previewControls = modal.querySelectorAll('.preview-device-btn');
+    const previewBody = modal.querySelector('.preview-modal-body');
+    
+    previewControls.forEach(btn => {
+        btn.addEventListener('click', () => {
+            previewControls.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const device = btn.dataset.device;
+            previewBody.className = 'preview-modal-body ' + device;
+        });
+    });
+    
+    try {
+        // Ensure template filename has .html extension
+        const filename = templateFilename.endsWith('.html') ? 
+            templateFilename : `${templateFilename}.html`;
+            
+        const response = await fetch(`/api/templates/preview/${filename}`);
+        const data = await response.json();
         
         if (!response.ok) {
-            throw new Error(`Failed to load template for preview: ${response.statusText}`);
+            throw new Error(data.message || 'Failed to load template preview');
         }
         
-        const templateContent = await response.text();
-        console.log('Template content loaded successfully for preview');
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load template preview');
+        }
         
-        // Update modal with template content
-        const modalContent = modal.querySelector('.modal-content');
-        modalContent.innerHTML = `
-            <div class="modal-header">
-                <h2><i class="fas fa-eye"></i> Template Preview</h2>
-                <div class="modal-actions">
-                    <button class="modal-button" id="copyTemplate">
-                        <i class="fas fa-copy"></i> Copy HTML
-                    </button>
-                    <button class="close-button" onclick="this.closest('.modal').remove()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
+        // Create iframe for preview
+        const iframe = document.createElement('iframe');
+        iframe.className = 'preview-iframe';
+        iframe.sandbox = 'allow-same-origin';
+        iframe.srcdoc = data.html;
+        
+        // Replace loading container with iframe
+        const loadingContainer = modal.querySelector('.loading-container');
+        loadingContainer.replaceWith(iframe);
+        
+        // Adjust iframe height after content loads
+        iframe.onload = () => {
+            iframe.style.height = iframe.contentWindow.document.body.scrollHeight + 'px';
+        };
+        
+    } catch (error) {
+        console.error('Error loading template preview:', error);
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'preview-error';
+        errorMessage.innerHTML = `
+            <div class="error-icon">
+                <i class="fas fa-exclamation-circle"></i>
             </div>
-            <div class="modal-body">
-                <div class="preview-controls">
-                    <button class="preview-button active" data-view="desktop">
-                        <i class="fas fa-desktop"></i> Desktop
-                    </button>
-                    <button class="preview-button" data-view="tablet">
-                        <i class="fas fa-tablet-alt"></i> Tablet
-                    </button>
-                    <button class="preview-button" data-view="mobile">
-                        <i class="fas fa-mobile-alt"></i> Mobile
-                    </button>
-                </div>
-                <div class="preview-container desktop">
-                    <iframe srcdoc="${templateContent.replace(/"/g, '&quot;')}" 
-                            class="preview-frame"></iframe>
-                </div>
-            </div>
+            <p>Failed to load template preview</p>
+            <p class="error-details">${error.message}</p>
+            <button class="retry-button">
+                <i class="fas fa-redo"></i> Try Again
+            </button>
         `;
         
-        // Set up preview controls
-        modal.querySelectorAll('.preview-button').forEach(button => {
-            button.addEventListener('click', () => {
-                modal.querySelectorAll('.preview-button').forEach(b => b.classList.remove('active'));
-                button.classList.add('active');
-                const view = button.dataset.view;
-                const container = modal.querySelector('.preview-container');
-                container.className = `preview-container ${view}`;
-            });
-        });
+        const loadingContainer = modal.querySelector('.loading-container');
+        loadingContainer.replaceWith(errorMessage);
         
-        // Set up copy button
-        modal.querySelector('#copyTemplate').addEventListener('click', () => {
-            navigator.clipboard.writeText(templateContent)
-                .then(() => {
-                    showNotification('Template HTML copied to clipboard', 'success');
-                })
-                .catch(() => showNotification('Failed to copy template HTML', 'error'));
+        // Add retry functionality
+        const retryButton = errorMessage.querySelector('.retry-button');
+        retryButton.addEventListener('click', () => {
+            modal.remove();
+            previewTemplate(templateFilename);
         });
-        
-        // Add click event to close modal when clicking outside
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-            }
-        });
-        
-        // Add escape key event to close modal
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && document.querySelector('.modal')) {
-                document.querySelector('.modal').remove();
-            }
-        });
-    } catch (error) {
-        console.error('Error in previewTemplate:', error);
-        showNotification(`Failed to preview template: ${error.message}`, 'error');
     }
 }
 

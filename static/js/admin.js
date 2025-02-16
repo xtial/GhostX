@@ -663,6 +663,36 @@ async function useTemplate(templateFilename) {
 // Preview template
 async function previewTemplate(templateFilename) {
     try {
+        // Create modal immediately with loading state
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-eye"></i> Template Preview</h3>
+                    <button class="close-button">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Loading preview...</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Add close functionality
+        const closeButton = modal.querySelector('.close-button');
+        closeButton.onclick = () => modal.remove();
+        
+        // Close on outside click
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
+        
+        // Load template preview
         const response = await fetch(`/api/admin/templates/${templateFilename}/preview`, {
             method: 'GET',
             headers: {
@@ -675,38 +705,46 @@ async function previewTemplate(templateFilename) {
         const data = await response.json();
         
         if (data.success) {
-            // Create modal for preview
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Template Preview</h3>
-                        <button class="close-button">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <iframe srcdoc="${data.html.replace(/"/g, '&quot;')}" 
-                                style="width: 100%; height: 500px; border: none;"></iframe>
-                    </div>
+            const modalBody = modal.querySelector('.modal-body');
+            modalBody.innerHTML = `
+                <div class="preview-controls">
+                    <button class="preview-button active" data-view="desktop">
+                        <i class="fas fa-desktop"></i> Desktop
+                    </button>
+                    <button class="preview-button" data-view="tablet">
+                        <i class="fas fa-tablet-alt"></i> Tablet
+                    </button>
+                    <button class="preview-button" data-view="mobile">
+                        <i class="fas fa-mobile-alt"></i> Mobile
+                    </button>
+                </div>
+                <div class="preview-container desktop">
+                    <iframe srcdoc="${data.html.replace(/"/g, '&quot;')}" 
+                            class="preview-frame"
+                            title="Template Preview"
+                            sandbox="allow-same-origin allow-scripts"></iframe>
                 </div>
             `;
             
-            document.body.appendChild(modal);
-            
-            // Add close functionality
-            const closeButton = modal.querySelector('.close-button');
-            closeButton.onclick = () => modal.remove();
-            
-            // Close on outside click
-            modal.onclick = (e) => {
-                if (e.target === modal) modal.remove();
-            };
+            // Set up preview controls
+            modalBody.querySelectorAll('.preview-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    modalBody.querySelectorAll('.preview-button').forEach(b => b.classList.remove('active'));
+                    button.classList.add('active');
+                    const view = button.dataset.view;
+                    const container = modalBody.querySelector('.preview-container');
+                    container.className = `preview-container ${view}`;
+                });
+            });
         } else {
             throw new Error(data.message);
         }
     } catch (error) {
         console.error('Error previewing template:', error);
-        showNotification(error.message || 'Failed to load template preview', 'error');
+        showNotification('Failed to load template preview', 'error');
+        // Remove modal if it exists
+        const modal = document.querySelector('.modal');
+        if (modal) modal.remove();
     }
 }
 

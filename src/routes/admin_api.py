@@ -11,6 +11,7 @@ from src.config import Config
 import logging
 import csv
 import io
+import os
 
 logger = logging.getLogger(__name__)
 admin_api = Blueprint('admin_api', __name__)
@@ -294,17 +295,52 @@ def get_template(template_path):
 def preview_template(template_path):
     """Preview a specific email template"""
     try:
-        # Handle template path to find the correct template
+        # First try to find template in database
         template = EmailTemplate.query.filter_by(name=template_path).first()
-        if not template:
-            return jsonify({
-                'success': False,
-                'message': 'Template not found'
-            }), 404
+        
+        if template:
+            html_content = template.html_content
+        else:
+            # If not in database, try to load from static files
+            template_file = os.path.join(current_app.root_path, 'static', 'templates', template_path)
+            if not os.path.exists(template_file):
+                return jsonify({
+                    'success': False,
+                    'message': 'Template not found'
+                }), 404
+                
+            with open(template_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+        
+        # Add preview wrapper with styles
+        preview_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {{ margin: 0; padding: 20px; }}
+                .email-preview {{
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: #fff;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="email-preview">
+                {html_content}
+            </div>
+        </body>
+        </html>
+        """
             
         return jsonify({
             'success': True,
-            'html': template.html_content
+            'html': preview_html,
+            'filename': template_path
         })
     except Exception as e:
         logger.error(f"Error previewing template: {sanitize_log(str(e))}")
